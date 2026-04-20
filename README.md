@@ -128,6 +128,13 @@ Open `http://localhost:3000`.
 - Use an SMTP-ready Gmail account with an app password for mail delivery
 - Point `MONGODB_URI` to a production-safe MongoDB instance such as MongoDB Atlas
 
+## Security Notes
+
+- Verification OTPs and reset OTPs expire after 15 minutes
+- Repeated resend requests are throttled with escalating cooldowns
+- Keep `.env.local` private and never commit real secrets
+- Use a Gmail app password, not your primary mailbox password
+
 ## Scripts
 
 ```bash
