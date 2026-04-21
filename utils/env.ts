@@ -1,12 +1,14 @@
-import { z } from "zod";
+import 'server-only';
+
+import { z } from 'zod';
 
 const envSchema = z.object({
-  MONGODB_URI: z.string().min(1, "MongoDB URI is required"),
-  NEXTAUTH_SECRET: z.string().min(1, "NextAuth Secret is required"),
-  GOOGLE_CLIENT_ID: z.string().min(1, "Google Client ID is required"),
-  GOOGLE_CLIENT_SECRET: z.string().min(1, "Google Client Secret is required"),
-  EMAIL_SERVER_USER: z.string().min(1, "EMAIL_SERVER_USER is required"),
-  EMAIL_SERVER_PASSWORD: z.string().min(1, "EMAIL_SERVER_PASSWORD is required"),
+  MONGODB_URI: z.string().min(1, 'MongoDB URI is required'),
+  NEXTAUTH_SECRET: z.string().min(1, 'NextAuth Secret is required'),
+  GOOGLE_CLIENT_ID: z.string().min(1, 'Google Client ID is required'),
+  GOOGLE_CLIENT_SECRET: z.string().min(1, 'Google Client Secret is required'),
+  EMAIL_SERVER_USER: z.string().min(1, 'EMAIL_SERVER_USER is required'),
+  EMAIL_SERVER_PASSWORD: z.string().min(1, 'EMAIL_SERVER_PASSWORD is required'),
 });
 
 const envParsed = envSchema.safeParse({
@@ -19,8 +21,8 @@ const envParsed = envSchema.safeParse({
 });
 
 if (!envParsed.success) {
-  console.error("❌ Invalid environment variables:", envParsed.error.format());
-  throw new Error("Invalid environment variables");
+  console.error('❌ Invalid environment variables:', envParsed.error.format());
+  throw new Error('Invalid environment variables');
 }
 
 export const env = envParsed.data;

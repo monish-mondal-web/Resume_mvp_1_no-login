@@ -1,8 +1,10 @@
-import nodemailer from "nodemailer";
-import { env } from "./env";
+import 'server-only';
+
+import nodemailer from 'nodemailer';
+import { env } from './env';
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  service: 'gmail',
   auth: {
     user: env.EMAIL_SERVER_USER,
     pass: env.EMAIL_SERVER_PASSWORD,
@@ -13,7 +15,7 @@ export const sendVerificationEmail = async (to: string, otp: string) => {
   const mailOptions = {
     from: `"Fresh Resume" <${env.EMAIL_SERVER_USER}>`,
     to,
-    subject: "Verify your Fresh Resume account",
+    subject: 'Verify your Fresh Resume account',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #0f172a; margin-top: 0;">Verification Required</h2>
@@ -39,7 +41,6 @@ export const sendVerificationEmail = async (to: string, otp: string) => {
     `,
   };
 
-
   await transporter.sendMail(mailOptions);
 };
 
@@ -47,7 +48,7 @@ export const sendPasswordResetEmail = async (to: string, otp: string) => {
   const mailOptions = {
     from: `"Fresh Resume Security" <${env.EMAIL_SERVER_USER}>`,
     to,
-    subject: "Reset your Fresh Resume password",
+    subject: 'Reset your Fresh Resume password',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #0f172a; margin-top: 0;">Password Reset Request</h2>

@@ -1,19 +1,29 @@
-import mongoose from "mongoose";
-import { env } from "@/utils/env";
+import 'server-only';
+
+import mongoose from 'mongoose';
+import { env } from '@/utils/env';
 
 const MONGODB_URI = env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable");
+  throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let cached = (global as any).mongoose;
+type MongooseCache = {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+};
 
-if (!cached) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cached = (global as any).mongoose = { conn: null, promise: null };
+declare global {
+  var mongooseCache: MongooseCache | undefined;
 }
+
+const cached = globalThis.mongooseCache ?? {
+  conn: null,
+  promise: null,
+};
+
+globalThis.mongooseCache = cached;
 
 async function dbConnect() {
   if (cached.conn) {

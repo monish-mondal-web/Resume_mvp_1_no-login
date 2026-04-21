@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import './globals.css';
-import { Providers } from './providers';
+import { AppProviders } from '@/components/providers/AppProviders';
 import { Toaster } from 'react-hot-toast';
 
-const inter = Inter({ subsets: ['latin'] });
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+});
 
 export const metadata: Metadata = {
   title: 'FreshResume - Build job-ready resumes in seconds',
-  description: 'AI-powered resumes tailored for every job. Land your dream role with minimal effort.',
+  description:
+    'AI-powered resumes tailored for every job. Land your dream role with minimal effort.',
 };
 
 export default function RootLayout({
@@ -18,11 +22,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen flex flex-col relative`}>
-        <Providers>
+      <body
+        className={`${poppins.className} min-h-screen flex flex-col relative`}
+      >
+        <AppProviders>
           {children}
           <Toaster position="bottom-right" />
-        </Providers>
+        </AppProviders>
       </body>
     </html>
   );
