@@ -23,13 +23,13 @@ export function Hero({ onStartBuilding }: HeroProps) {
           <button
             type="button"
             onClick={onStartBuilding}
-            className="h-11 cursor-pointer rounded-md bg-indigo-600 px-7 font-medium text-white transition hover:bg-indigo-700 active:scale-95"
+            className="h-11 cursor-pointer rounded-xl bg-indigo-600 px-7 font-medium text-white transition hover:bg-indigo-700 active:scale-95"
           >
             Get started
           </button>
           <button
             type="button"
-            className="flex h-11 cursor-pointer items-center gap-2 rounded-md border border-slate-600 px-6 font-medium text-slate-600 transition hover:bg-white/10 active:scale-95"
+            className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-600 px-6 font-medium text-slate-600 transition hover:bg-white/10 active:scale-95"
           >
             <FiVideo className="h-5 w-5" />
             <span>Watch demo</span>

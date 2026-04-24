@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { FaCrown } from 'react-icons/fa';
-import { FiChevronDown, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
+import { FiArrowRight, FiChevronDown, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
 import { AccountMenu, AccountMenuItems } from './AccountMenu';
 import { BrandLogo } from './BrandLogo';
 import { navLinks } from './home.constants';
 
 interface NavbarProps {
-  onLoginClick: () => void;
+  onLoginClick?: () => void;
+  authButtonText?: string;
 }
 
-export function Navbar({ onLoginClick }: NavbarProps) {
-  const { data: session } = useSession();
+export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
+  const { data: session, status } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileAccountOpen, setIsMobileAccountOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -29,7 +31,7 @@ export function Navbar({ onLoginClick }: NavbarProps) {
       return;
     }
 
-    onLoginClick();
+    onLoginClick?.();
   };
 
   const handleCloseMobileMenu = () => {
@@ -53,17 +55,17 @@ export function Navbar({ onLoginClick }: NavbarProps) {
 
   return (
     <>
-      <nav className="z-50 flex w-full items-center justify-between px-6 py-4 text-sm text-slate-800 backdrop-blur md:px-16 lg:px-24 xl:px-32">
-        <a href="#" aria-label="FreshResume home">
+      <nav className="fixed top-0 left-0 w-full z-50 flex h-[56px] items-center justify-between px-4 text-sm text-slate-800 bg-white/70 backdrop-blur-md border-b border-gray-100 sm:px-6 lg:px-10">
+        <Link href="/" aria-label="FreshResume home">
           <BrandLogo />
-        </a>
+        </Link>
 
-        <div className="hidden items-center gap-8 transition duration-500 md:flex">
+        <div className="hidden items-center gap-5 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="transition hover:text-slate-500"
+              className="text-slate-600 transition-colors duration-150 hover:text-indigo-600"
             >
               {link.label}
             </a>
@@ -71,15 +73,38 @@ export function Navbar({ onLoginClick }: NavbarProps) {
         </div>
 
         <div className="relative hidden md:block" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={handlePrimaryAction}
-            aria-haspopup={session ? 'menu' : undefined}
-            aria-expanded={session ? isDropdownOpen : undefined}
-            className="cursor-pointer rounded-full bg-indigo-600 px-6 py-2.5 font-medium text-white transition-all hover:bg-indigo-700 active:scale-95"
-          >
-            {session ? 'My account' : 'Build Resume Free'}
-          </button>
+          {status === 'loading' ? (
+            <div className="h-8 w-32 animate-pulse rounded-full bg-slate-100" />
+          ) : (
+            <button
+              type="button"
+              onClick={handlePrimaryAction}
+              aria-haspopup={session ? 'menu' : undefined}
+              aria-expanded={session ? isDropdownOpen : undefined}
+              className={`group flex items-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 ${
+                session
+                  ? 'rounded-full border border-slate-200 bg-white pl-1 pr-3 py-1 hover:border-slate-300 hover:bg-slate-50'
+                  : 'rounded-full bg-indigo-600 px-4 py-1.5 font-medium text-white hover:bg-indigo-700'
+              }`}
+            >
+              {session ? (
+                <>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white shadow-sm ring-2 ring-white transition-transform group-hover:scale-105">
+                    {userInitial}
+                  </div>
+                  <span className="text-sm font-semibold tracking-tight text-slate-700">
+                    {session.user?.name || 'User'}
+                  </span>
+                  <FiChevronDown className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-indigo-600' : 'group-hover:text-slate-600'}`} />
+                </>
+              ) : (
+                <span className="flex items-center gap-1.5 text-sm">
+                  {authButtonText || 'Build Resume Free'}
+                  <FiArrowRight className="text-xs" />
+                </span>
+              )}
+            </button>
+          )}
 
           {session && isDropdownOpen && (
             <AccountMenu
@@ -123,13 +148,13 @@ export function Navbar({ onLoginClick }: NavbarProps) {
           }`}
         >
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <a
-              href="#"
+            <Link
+              href="/"
               aria-label="FreshResume home"
               onClick={handleCloseMobileMenu}
             >
               <BrandLogo />
-            </a>
+            </Link>
 
             <button
               type="button"
@@ -176,11 +201,11 @@ export function Navbar({ onLoginClick }: NavbarProps) {
                       type="button"
                       onClick={() => {
                         handleCloseMobileMenu();
-                        onLoginClick();
+                        onLoginClick?.();
                       }}
                       className="flex w-full cursor-pointer items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700"
                     >
-                      Build Resume Free
+                      {authButtonText || 'Build Resume Free'}
                     </button>
 
                     <p className="px-2 text-sm leading-6 text-slate-500">

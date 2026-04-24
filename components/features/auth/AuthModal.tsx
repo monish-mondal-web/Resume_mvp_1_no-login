@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { FiEye, FiEyeOff, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -28,6 +29,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -83,6 +85,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data === 'auth-success') {
+        toast.success('Successfully logged in with Google!');
+        onClose();
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const getPasswordStrength = (pass: string) => {
@@ -129,15 +147,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     return 'Strong';
   };
 
-  const handleGoogleAuth = async () => {
-    try {
-      setIsLoading(true);
-      await signIn('google', { callbackUrl: '/' });
-    } catch {
-      toast.error('Failed to authenticate with Google');
-      setIsLoading(false);
-    }
+  const handleGoogleAuth = () => {
+    const width = 550;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    window.open(
+      '/auth/popup-signin',
+      'FreshResumeLogin',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
   };
+
+  // Removed from here to place above the early return
 
   const handleForgotPassword = async (
     event?: React.FormEvent | React.MouseEvent
@@ -257,7 +280,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         toast.error(signInRes.error || 'Login failed after verification');
       } else {
         onClose();
-        setTimeout(() => window.location.reload(), 300);
+        const session = await getSession();
+        if (session?.user?.isProfileCompleted) {
+          router.push('/dashboard');
+        } else {
+          router.push('/onboarding');
+        }
       }
     } catch {
       toast.error('An error occurred during verification');
@@ -362,9 +390,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       } else {
         toast.success('Successfully logged in!');
         onClose();
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
+        const session = await getSession();
+        if (session?.user?.isProfileCompleted) {
+          router.push('/dashboard');
+        } else {
+          router.push('/onboarding');
+        }
       }
     } catch {
       toast.error('An error occurred');
@@ -439,7 +470,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative my-auto flex w-full max-w-[940px] flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.2)] max-md:max-h-none md:max-h-[calc(100dvh-5rem)] lg:flex-row xl:max-h-[680px]"
+        className="relative my-auto flex w-full max-w-[900px] flex-col overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_32px_96px_rgba(15,23,42,0.22)] max-md:max-h-none md:max-h-[calc(100dvh-4rem)] lg:flex-row lg:max-h-[660px]"
       >
         <button
           type="button"
@@ -450,7 +481,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <FiX className="h-5 w-5" />
         </button>
 
-        <div className="relative flex min-h-0 w-full flex-col justify-center overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 md:px-7 md:py-7 lg:w-[52%] lg:px-8 lg:py-8 xl:px-10 xl:py-9">
+        <div className="relative flex min-h-0 w-full flex-col justify-center overflow-y-auto px-6 py-6 sm:px-7 sm:py-7 lg:w-[54%] lg:px-9 lg:py-8">
           <h2
             id="auth-modal-title"
             className="mb-2 pr-10 text-[1.8rem] font-semibold tracking-tight text-text sm:text-[2.05rem] lg:text-[2rem] xl:text-[2.3rem]"
@@ -835,46 +866,61 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <div className="relative hidden min-h-0 w-[48%] overflow-hidden bg-[linear-gradient(145deg,#eff6ff_0%,#dbeafe_50%,#eef4ff_100%)] xl:flex">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.24)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.24)_1px,transparent_1px)] bg-[size:88px_88px] opacity-40" />
+        <div className="relative hidden min-h-0 w-[46%] overflow-hidden lg:flex" style={{ background: 'linear-gradient(150deg, #1e1b4b 0%, #312e81 40%, #4c1d95 100%)' }}>
+          {/* Subtle dot grid */}
+          <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+          {/* Glow orbs */}
+          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
+          <div className="absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-400/20 blur-3xl" />
 
-          <div className="relative z-10 flex h-full min-h-0 flex-col justify-center gap-6 px-7 py-7">
-            <div className="inline-flex w-fit items-center rounded-full border border-white/70 bg-white/65 px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.16em] text-indigo-600 shadow-sm backdrop-blur">
-              FreshResume
+          <div className="relative z-10 flex h-full min-h-0 flex-col justify-between px-8 py-8">
+            {/* Brand mark */}
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 backdrop-blur-sm">
+              <span className="h-2 w-2 rounded-full bg-indigo-300" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">FreshResume</span>
             </div>
 
-            <div className="max-w-md">
-              <p className="text-[12px] font-medium uppercase tracking-[0.24em] text-indigo-600/80">
-                Resume Builder
+            {/* Main copy */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-300">
+                AI Resume Builder
               </p>
-              <h3 className="mt-3 text-[1.9rem] font-semibold tracking-tight text-slate-900 2xl:text-[2.35rem] 2xl:leading-[1.08]">
-                AI-Powered Success
+              <h3 className="mt-2.5 text-[1.75rem] font-bold leading-tight tracking-tight text-white">
+                Land interviews<br />faster than ever.
               </h3>
-              <p className="mt-3 text-[15px] leading-6 text-slate-600 2xl:text-base 2xl:leading-7">
-                Join thousands of professionals who secure interviews faster
-                with guided resume writing, cleaner presentation, and
-                role-focused suggestions.
+              <p className="mt-3 text-[13.5px] leading-6 text-white/60">
+                Join professionals who build standout resumes in minutes with AI-guided writing and ATS-ready templates.
               </p>
+
+              <div className="mt-5 space-y-3">
+                {[
+                  'Tailored phrasing for every job application',
+                  'ATS-friendly layouts recruiters love',
+                  'One-click export in PDF & DOCX',
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2.5">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-400/30">
+                      <svg className="h-2.5 w-2.5 text-indigo-200" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                      </svg>
+                    </div>
+                    <p className="text-[13px] text-white/70">{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-3.5 border-t border-white/70 pt-4 text-slate-600">
-              <div className="flex items-start gap-3">
-                <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" />
-                <p className="text-[13px] leading-6 2xl:text-sm 2xl:leading-7">
-                  Tailored sections and smarter phrasing for every application.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-sky-500" />
-                <p className="text-[13px] leading-6 2xl:text-sm 2xl:leading-7">
-                  Balanced layouts that stay recruiter-friendly across edits.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-400" />
-                <p className="text-[13px] leading-6 2xl:text-sm 2xl:leading-7">
-                  Quick sign-in and a focused workspace from the first click.
-                </p>
+            {/* Social proof */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
+              <p className="text-[12px] font-medium text-white/50 uppercase tracking-widest mb-1">Trusted by</p>
+              <p className="text-[15px] font-semibold text-white">10,000+ job seekers</p>
+              <div className="mt-2 flex gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+                <span className="ml-1.5 text-[12px] text-white/50">4.9 / 5</span>
               </div>
             </div>
           </div>

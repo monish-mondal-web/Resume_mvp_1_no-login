@@ -9,6 +9,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1, 'Google Client Secret is required'),
   EMAIL_SERVER_USER: z.string().min(1, 'EMAIL_SERVER_USER is required'),
   EMAIL_SERVER_PASSWORD: z.string().min(1, 'EMAIL_SERVER_PASSWORD is required'),
+  NEXTAUTH_URL: z.string().url('Invalid NEXTAUTH_URL').optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, 'Cloudinary Cloud Name is required'),
+  CLOUDINARY_API_KEY: z.string().min(1, 'Cloudinary API Key is required'),
+  CLOUDINARY_API_SECRET: z.string().min(1, 'Cloudinary API Secret is required'),
 });
 
 const envParsed = envSchema.safeParse({
@@ -18,6 +22,10 @@ const envParsed = envSchema.safeParse({
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   EMAIL_SERVER_USER: process.env.EMAIL_SERVER_USER,
   EMAIL_SERVER_PASSWORD: process.env.EMAIL_SERVER_PASSWORD,
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 });
 
 if (!envParsed.success) {

@@ -5,12 +5,14 @@ declare module 'next-auth' {
     user: DefaultSession['user'] & {
       id?: string;
       isVerified?: boolean;
+      isProfileCompleted?: boolean;
     };
   }
 
   interface User extends DefaultUser {
     id?: string;
     isVerified?: boolean;
+    isProfileCompleted?: boolean;
   }
 }
 
@@ -18,5 +20,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id?: string;
     isVerified?: boolean;
+    isProfileCompleted?: boolean;
   }
 }

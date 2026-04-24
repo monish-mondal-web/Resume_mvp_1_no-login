@@ -79,6 +79,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           isVerified: user.isVerified,
+          isProfileCompleted: user.isProfileCompleted,
         };
       },
     }),
@@ -87,7 +88,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         if (user.id) {
           token.id = user.id;
@@ -95,7 +96,15 @@ export const authOptions: NextAuthOptions = {
         if (typeof user.isVerified === 'boolean') {
           token.isVerified = user.isVerified;
         }
+        if (typeof user.isProfileCompleted === 'boolean') {
+          token.isProfileCompleted = user.isProfileCompleted;
+        }
       }
+
+      if (trigger === 'update' && session?.isProfileCompleted !== undefined) {
+        token.isProfileCompleted = session.isProfileCompleted;
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -105,6 +114,9 @@ export const authOptions: NextAuthOptions = {
         }
         if (typeof token.isVerified === 'boolean') {
           session.user.isVerified = token.isVerified;
+        }
+        if (typeof token.isProfileCompleted === 'boolean') {
+          session.user.isProfileCompleted = token.isProfileCompleted;
         }
       }
       return session;
@@ -122,18 +134,24 @@ export const authOptions: NextAuthOptions = {
         const existingUser = await User.findOne({ email });
 
         if (!existingUser) {
-          await User.create({
+          const newUser = await User.create({
             email,
             name: user.name || 'User',
             image: user.image,
-            isVerified: true, // Google users are always verified
+            isVerified: true,
+            isProfileCompleted: false,
           });
+          user.id = newUser._id.toString();
           user.isVerified = true;
-        } else if (!existingUser.isVerified) {
-          // If they signed up with email but never verified, then switch to Google -> verify them
-          existingUser.isVerified = true;
-          await existingUser.save();
+          user.isProfileCompleted = false;
+        } else {
+          if (!existingUser.isVerified) {
+            existingUser.isVerified = true;
+            await existingUser.save();
+          }
+          user.id = existingUser._id.toString();
           user.isVerified = true;
+          user.isProfileCompleted = existingUser.isProfileCompleted;
         }
       }
       return true;

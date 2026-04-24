@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -20,15 +20,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const bodyClasses = [poppins.className, "min-h-screen", "flex", "flex-col"].join(" ");
+
   return (
-    <html lang="en">
-      <body
-        className={`${poppins.className} min-h-screen flex flex-col relative`}
-      >
-        <AppProviders>
-          {children}
-          <Toaster position="bottom-right" />
-        </AppProviders>
+    <html lang="en" suppressHydrationWarning>
+      <body className={bodyClasses} suppressHydrationWarning>
+        <div className="flex-1 flex flex-col relative">
+          <AppProviders>
+            {children}
+            <Toaster position="bottom-right" />
+          </AppProviders>
+        </div>
       </body>
     </html>
   );
