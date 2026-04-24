@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Hero } from './Hero';
 import { Navbar } from './Navbar';
 
@@ -13,8 +14,17 @@ const AuthModal = dynamic(
 );
 
 export function HomeClient() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const router = useRouter();
+
+  const handleStartBuilding = () => {
+    if (status === 'authenticated' && session?.user?.isProfileCompleted) {
+      router.push('/dashboard');
+      return;
+    }
+    router.push('/onboarding');
+  };
 
   const handleAuthModalOpen = () => {
     if (status === 'authenticated') return;
@@ -25,9 +35,9 @@ export function HomeClient() {
     isAuthModalOpen && status !== 'authenticated';
 
   return (
-    <section className="relative flex min-h-screen w-full flex-col overflow-hidden bg-white">
+    <section className="relative flex min-h-screen w-full flex-col overflow-hidden bg-white pt-[56px]">
       <Navbar onLoginClick={handleAuthModalOpen} />
-      <Hero onStartBuilding={handleAuthModalOpen} />
+      <Hero onStartBuilding={handleStartBuilding} />
 
       {shouldShowAuthModal && (
         <AuthModal

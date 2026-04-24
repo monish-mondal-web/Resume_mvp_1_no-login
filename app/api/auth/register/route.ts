@@ -5,9 +5,15 @@ import { sendVerificationEmail } from '@/utils/mailer';
 import { apiError, apiSuccess, parseJsonBody } from '@/lib/api-response';
 import { generateOtp, minutesFromNow, OTP_EXPIRY_MINUTES } from '@/lib/otp';
 import { registerSchema } from '@/lib/validation/auth';
+import { rateLimit, getIP, createRateLimitResponse } from '@/lib/security/limiter';
 
 export async function POST(req: Request) {
   try {
+    // ── Rate Limiting ──
+    const ip = getIP(req);
+    const limit = rateLimit(ip, 'auth:register', { limit: 5, windowMs: 15 * 60 * 1000 });
+    if (!limit.success) return createRateLimitResponse(limit.resetAt);
+
     const parsed = await parseJsonBody(req, registerSchema);
     if (parsed.response) {
       return parsed.response;
