@@ -37,9 +37,20 @@ import {
   FaLinkedin, FaGithub, FaXTwitter, FaDiscord, FaFigma, FaDribbble, FaBehance, FaSketch 
 } from 'react-icons/fa6';
 
+import { useResizablePane } from '@/hooks/useResizablePane';
+import { useResumeHistory } from '@/hooks/useResumeHistory';
+import type { TemplateId, TemplateOptions } from '@/types/resume.types';
+import { DEFAULT_TEMPLATE_OPTIONS } from '@/types/resume.types';
+import { buildResume } from '@/lib/resume-builder';
+
 const AuthModal = dynamic(
   () => import('@/components/features/auth/AuthModal').then((mod) => mod.AuthModal),
   { loading: () => null }
+);
+
+const ResumePreview = dynamic(
+  () => import('@/components/preview/ResumePreview').then((mod) => mod.ResumePreview),
+  { ssr: false, loading: () => null }
 );
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -219,6 +230,88 @@ export function OnboardingClient() {
   const [patents, setPatents]           = useState<PatentEntry[]>(() => getInitialValue('patents', DEF_PATENT));
   const [extracurricular, setExtracurricular] = useState<ExtracurricularEntry[]>(() => getInitialValue('extracurricular', DEF_EXTRA));
 
+  const [previewTemplate, setPreviewTemplate] = useState<TemplateId>('template1');
+  const [templateOptions, setTemplateOptions] = useState<TemplateOptions>(() => {
+    if (typeof window === 'undefined') return DEFAULT_TEMPLATE_OPTIONS;
+    try {
+      const saved = localStorage.getItem('resumeTemplateOptions');
+      return saved ? { ...DEFAULT_TEMPLATE_OPTIONS, ...JSON.parse(saved) } : DEFAULT_TEMPLATE_OPTIONS;
+    } catch { return DEFAULT_TEMPLATE_OPTIONS; }
+  });
+
+  const resumeData = useMemo(() => buildResume({
+    personalInfo, experience, education, skills, projects, certificates,
+    coursework, involvement, awards, publications, references,
+    achievements, languages, softskills, internships, freelance,
+    leadership, volunteering, hobbies, conferences, patents, extracurricular,
+    selectedMoreIds, stepOrder,
+  }), [personalInfo, experience, education, skills, projects, certificates,
+    coursework, involvement, awards, publications, references,
+    achievements, languages, softskills, internships, freelance,
+    leadership, volunteering, hobbies, conferences, patents, extracurricular,
+    selectedMoreIds, stepOrder]);
+
+  const currentSnapshot = useMemo(() => ({
+    personalInfo, experience, education, skills, projects, certificates,
+    coursework, involvement, awards, publications, references,
+    achievements, languages, softskills, internships, freelance,
+    leadership, volunteering, hobbies, conferences, patents, extracurricular,
+  }), [personalInfo, experience, education, skills, projects, certificates,
+    coursework, involvement, awards, publications, references,
+    achievements, languages, softskills, internships, freelance,
+    leadership, volunteering, hobbies, conferences, patents, extracurricular]);
+
+  const applySnapshot = useCallback((snap: typeof currentSnapshot) => {
+    setPersonalInfo(snap.personalInfo);
+    setExperience(snap.experience);
+    setEducation(snap.education);
+    setSkills(snap.skills);
+    setProjects(snap.projects);
+    setCertificates(snap.certificates);
+    setCoursework(snap.coursework);
+    setInvolvement(snap.involvement);
+    setAwards(snap.awards);
+    setPublications(snap.publications);
+    setReferences(snap.references);
+    setAchievements(snap.achievements);
+    setLanguages(snap.languages);
+    setSoftskills(snap.softskills);
+    setInternships(snap.internships);
+    setFreelance(snap.freelance);
+    setLeadership(snap.leadership);
+    setVolunteering(snap.volunteering);
+    setHobbies(snap.hobbies);
+    setConferences(snap.conferences);
+    setPatents(snap.patents);
+    setExtracurricular(snap.extracurricular);
+  }, []);
+
+  const { canUndo, canRedo, undo, redo } = useResumeHistory(currentSnapshot, applySnapshot);
+
+  const [containerWidth, setContainerWidth] = useState(1200);
+  const [showPreview, setShowPreview] = useState(true);
+  useEffect(() => {
+    const update = () => setContainerWidth(window.innerWidth);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  const { leftWidth, onDividerMouseDown } = useResizablePane(containerWidth);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -244,9 +337,10 @@ export function OnboardingClient() {
       if (pIdx > 0) { result.splice(pIdx, 1); result.unshift('personal'); }
       return result;
     });
+    setActiveStep(active.id as string);
   }, []);
 
-  // â”€â”€ Progress Logic â”€â”€
+  // ── Progress Logic â”€â”€
   const allSteps = useMemo<StepConfig[]>(() => {
     const stepMap = new Map<string, StepConfig>([
       ...BASE_STEPS.map(s => [s.id, s] as [string, StepConfig]),
@@ -498,6 +592,9 @@ export function OnboardingClient() {
         setSelectedMoreIds([]);
         setStepOrder(['personal', 'experience', 'education', 'skills']);
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('resumeTemplateOptions');
+        setTemplateOptions(DEFAULT_TEMPLATE_OPTIONS);
+        setPreviewTemplate('template1');
         setVisitedSteps(new Set(['personal']));
         setActiveStep('personal');
         setConfirmModal(null);
@@ -673,6 +770,9 @@ export function OnboardingClient() {
         </div>
       </div>
 
+      {/* ── Left pane: sidebar + form ── */}
+      <div className="hidden md:flex overflow-hidden border-r border-slate-200 flex-shrink-0" style={{ width: leftWidth }}>
+
       {/* â”€â”€ Sidebar â”€â”€ */}
       <aside className="hidden w-[280px] flex-shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
         <div className="flex-shrink-0 border-b border-slate-50 px-5 py-2 pt-4">
@@ -780,7 +880,7 @@ export function OnboardingClient() {
             <h1 className="text-2xl font-semibold text-slate-900 sm:text-[26px]">{currentStep.title}</h1>
             <p className="mt-1 text-sm text-slate-500">{currentStep.subtitle}</p>
             <div className="mt-7">
-              {activeStep === 'personal'     && <PersonalForm data={personalInfo} onChange={setPersonalInfo} session={session} />}
+              {activeStep === 'personal'     && <PersonalForm data={personalInfo} onChange={setPersonalInfo} session={session} showPhoto={templateOptions.showPhoto} onTogglePhoto={() => { const n = { ...templateOptions, showPhoto: !templateOptions.showPhoto }; setTemplateOptions(n); localStorage.setItem('resumeTemplateOptions', JSON.stringify(n)); }} />}
               {activeStep === 'experience'   && <ExperienceForm entries={experience} onChange={setExperience} />}
               {activeStep === 'education'    && <EducationForm entries={education} onChange={setEducation} />}
               {activeStep === 'skills'       && <SkillsForm skills={skills} onChange={setSkills} />}
@@ -811,6 +911,15 @@ export function OnboardingClient() {
         <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 md:flex md:items-center sm:px-8 md:px-10">
           <div className="flex w-full items-center justify-between">
             <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600">Reset</button>
+            <button
+              onClick={() => setShowPreview(p => !p)}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/>
+              </svg>
+              {showPreview ? 'Hide Preview' : 'Show Preview'}
+            </button>
             {isLastStep ? (
               <button onClick={handleComplete} disabled={isLoading}
                 className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
@@ -826,6 +935,47 @@ export function OnboardingClient() {
         </div>
 
       </main>
+
+      </div>{/* end left pane */}
+
+      {/* ── Resize divider ── */}
+      <div
+        onMouseDown={onDividerMouseDown}
+        className={`hidden md:flex w-1.5 flex-shrink-0 cursor-col-resize items-center justify-center bg-slate-200 hover:bg-indigo-400/60 transition-colors active:bg-indigo-500/60 group ${showPreview ? '' : 'opacity-0 pointer-events-none'}`}
+      >
+        <div className="h-8 w-0.5 rounded-full bg-slate-400 group-hover:bg-white/80" />
+      </div>
+
+      {/* ── Right pane: live preview ── */}
+      <div
+        className="hidden md:block overflow-hidden flex-shrink-0"
+        style={{
+          flex: showPreview ? '1 1 0' : '0 0 0',
+          width: showPreview ? undefined : 0,
+          minWidth: 0,
+          transition: 'flex 300ms ease, width 300ms ease',
+        }}
+      >
+        {isMounted && (
+          <ResumePreview
+            data={resumeData}
+            templateId={previewTemplate}
+            templateOptions={templateOptions}
+            onTemplateChange={setPreviewTemplate}
+            onOptionsChange={(opts) => {
+              setTemplateOptions(opts);
+              localStorage.setItem('resumeTemplateOptions', JSON.stringify(opts));
+            }}
+            activeSection={activeStep}
+            onSectionClick={(id) => setActiveStep(id)}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
+        )}
+      </div>
+
           </>
         )}
       </div>
@@ -1063,10 +1213,12 @@ function AiSparkleIcon({ className }: { className?: string }) {
 }
 
 // â”€â”€ Personal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- function PersonalForm({ data, onChange, session }: {
+ function PersonalForm({ data, onChange, session, showPhoto, onTogglePhoto }: {
   data: any;
   onChange: (d: any) => void;
   session: any;
+  showPhoto?: boolean;
+  onTogglePhoto?: () => void;
 }) {
   const userInitial = data.firstName[0]?.toUpperCase() ?? 'A';
   const [modalOpen, setModalOpen]     = useState(false);
@@ -1138,6 +1290,20 @@ function AiSparkleIcon({ className }: { className?: string }) {
             <p className="text-[11px] text-slate-400">JPG, PNG or WebP Â· max 5 MB</p>
           </div>
         </div>
+      </div>
+
+      {/* Photo visibility toggle */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3">
+        <div>
+          <p className="text-sm font-medium text-slate-700">Show photo in resume</p>
+          <p className="text-xs text-slate-400">Toggle photo visibility on the template</p>
+        </div>
+        <button
+          onClick={onTogglePhoto}
+          className={`relative inline-flex h-6 w-10 cursor-pointer items-center rounded-full transition-colors ${showPhoto ? 'bg-indigo-500' : 'bg-slate-200'}`}
+        >
+          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${showPhoto ? 'translate-x-5' : 'translate-x-1'}`} />
+        </button>
       </div>
 
       {/* â”€â”€ Basic Info â”€â”€ */}
