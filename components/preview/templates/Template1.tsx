@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
 
@@ -509,7 +508,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
         fontSize: fsBase,
         color: '#111827',
         backgroundColor: '#ffffff',
-        padding: '26px 28px',
+        padding: '16px 28px',
         minHeight: '100%',
         lineHeight: 1.4,
       }}
@@ -519,11 +518,11 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
         data-section="personal"
         onClick={handleClick('personal')}
         className="cursor-pointer"
-        style={{ marginBottom: gap, ...sectionRing('personal') }}
+        style={{ marginBottom: gap, marginTop: 0, ...sectionRing('personal') }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1 style={{ fontSize: fsBase + 7, fontWeight: 700, letterSpacing: '0.01em', color: '#111827', lineHeight: 1.1, marginBottom: 2 }}>
+            <h1 style={{ fontSize: fsBase + 7, fontWeight: 700, letterSpacing: '0.01em', color: '#111827', lineHeight: 1.1, marginBottom: 2, marginTop: 0 }}>
               {personal.firstName} {personal.lastName}
             </h1>
             {personal.professionalTitle && (
@@ -531,13 +530,14 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
             )}
           </div>
           {options.showPhoto && personal.image?.url && (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={personal.image.url}
               alt="Profile"
               width={60}
               height={60}
               style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5e7eb', flexShrink: 0 }}
-              unoptimized
+              crossOrigin="anonymous"
             />
           )}
         </div>

@@ -8,7 +8,7 @@ export async function downloadAsPDF(elementId: string, filename = 'resume.pdf'):
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
-    allowTaint: true,
+    allowTaint: false,
     backgroundColor: '#ffffff',
   });
 
@@ -50,7 +50,7 @@ export async function downloadAsImage(
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
-    allowTaint: true,
+    allowTaint: false,
     backgroundColor: '#ffffff',
   });
 

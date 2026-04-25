@@ -277,11 +277,11 @@ export function ResumePreview({
             <button
               key={tab.id}
               onClick={() => setActivePanel(tab.id as any)}
-              className="group relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm text-slate-400 shadow-sm transition-all duration-300 hover:border-indigo-200 hover:text-indigo-600 hover:scale-105"
+              className="group relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-300 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105"
             >
               <tab.icon className="text-[17px] transition-transform group-hover:scale-110" />
               <div className="absolute right-full mr-3 hidden group-hover:block pointer-events-none">
-                <div className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-2xl tracking-wide uppercase">{tab.label}</div>
+                <div className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-2xl tracking-wide uppercase">{tab.label}</div>
               </div>
             </button>
           ))}
@@ -321,8 +321,8 @@ export function ResumePreview({
           </div>
         </div>
 
-        <div ref={containerRef} className="flex-1 overflow-auto bg-slate-100 p-2 scroll-smooth custom-scrollbar">
-          <div className="flex flex-col items-center py-10" style={{ minWidth: A4_W * zoom }}>
+        <div ref={containerRef} className="flex-1 overflow-auto bg-slate-100 p-1 scroll-smooth no-scrollbar">
+          <div className="flex flex-col items-center pt-0 pb-20" style={{ minWidth: A4_W * zoom }}>
             <div ref={contentRef} className="bg-white shadow-2xl relative" style={{ width: A4_W * zoom, height: contentH * zoom }}>
               {Array.from({ length: pageCount }).map((_, pageIdx) => {
                 const isLast = pageIdx === pageCount - 1;

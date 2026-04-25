@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
 
@@ -450,7 +449,7 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
         fontSize: fsBase,
         color: '#1a1a1a',
         backgroundColor: '#ffffff',
-        padding: '32px 36px',
+        padding: '20px 36px',
         minHeight: '100%',
         lineHeight: 1.45,
       }}
@@ -460,21 +459,22 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
         data-section="personal"
         onClick={handleClick('personal')}
         className="cursor-pointer"
-        style={{ textAlign: 'center', marginBottom: gap + 4, ...sectionRing('personal') }}
+        style={{ textAlign: 'center', marginBottom: gap + 4, marginTop: 0, ...sectionRing('personal') }}
       >
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 14 }}>
           {options.showPhoto && personal.image?.url && (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={personal.image.url}
               alt="Profile"
               width={64}
               height={64}
               style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5e7eb', flexShrink: 0, marginTop: 4 }}
-              unoptimized
+              crossOrigin="anonymous"
             />
           )}
           <div>
-            <h1 style={{ fontSize: fsBase + 10, fontWeight: 700, letterSpacing: '0.05em', color: '#1a1a1a', lineHeight: 1.05, marginBottom: 3 }}>
+            <h1 style={{ fontSize: fsBase + 10, fontWeight: 700, letterSpacing: '0.05em', color: '#1a1a1a', lineHeight: 1.05, marginBottom: 3, marginTop: 0 }}>
               {personal.firstName} {personal.lastName}
             </h1>
             {personal.professionalTitle && (
