@@ -152,17 +152,17 @@ export function ResumePreview({
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    if (!fileName && data.personal.firstName) {
+    if (!fileName && data.personal?.firstName) {
       setFileName(`${data.personal.firstName}_resume`.toLowerCase());
     }
-  }, [data.personal.firstName]);
+  }, [data.personal?.firstName]);
 
   // Update input width based on text length
   useEffect(() => {
     if (nameMeasureRef.current) {
       setNameWidth(Math.max(60, nameMeasureRef.current.offsetWidth + 8));
     }
-  }, [fileName, data.personal.firstName]);
+  }, [fileName, data.personal?.firstName]);
   
   const isAutoFit    = useRef(true); 
   const zoomPct      = Math.round(zoom * 100);
@@ -251,7 +251,7 @@ export function ResumePreview({
     setIsExporting(true);
     try {
       const elemId = templateId === 'template1' ? 'resume-template1' : 'resume-template2';
-      const name   = (fileName.trim() || (data.personal.firstName ? `${data.personal.firstName}_resume` : 'resume')).toLowerCase().replace(/\\s+/g, '-');
+      const name   = (fileName.trim() || (data.personal?.firstName ? `${data.personal.firstName}_resume` : 'resume')).toLowerCase().replace(/\s+/g, '-');
       if (type === 'pdf') {
         const { downloadAsPDF } = await import('@/lib/exportResume');
         await downloadAsPDF(elemId, `${name}.pdf`);
@@ -294,14 +294,14 @@ export function ResumePreview({
           <div className="flex items-center">
             <div className="flex items-center group relative">
               <span ref={nameMeasureRef} className="absolute opacity-0 pointer-events-none text-[11px] font-semibold px-1">
-                {fileName || (data.personal.firstName ? `${data.personal.firstName}_resume` : "Untitled Resume")}
+                {fileName || (data.personal?.firstName ? `${data.personal.firstName}_resume` : "Untitled Resume")}
               </span>
               <input
                 value={fileName}
                 onChange={(e) => setFileName(e.target.value)}
                 style={{ width: `${nameWidth}px` }}
                 className="bg-transparent text-[11px] font-semibold text-slate-700 outline-none border-b border-dotted border-slate-300 hover:border-slate-400 focus:border-indigo-400 transition-colors py-0.5"
-                placeholder={data.personal.firstName ? `${data.personal.firstName}_resume` : "Untitled Resume"}
+                placeholder={data.personal?.firstName ? `${data.personal.firstName}_resume` : "Untitled Resume"}
               />
               <FiEdit2 className="text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors shrink-0" />
             </div>

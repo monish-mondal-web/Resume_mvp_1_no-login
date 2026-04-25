@@ -24,7 +24,7 @@ import type {
 } from '@/types/resume.types';
 
 interface BuildResumeInput {
-  personalInfo: ResumePersonal;
+  personalInfo?: ResumePersonal;
   experience: ResumeExperience[];
   education: ResumeEducation[];
   skills: string[];
@@ -50,6 +50,11 @@ interface BuildResumeInput {
   stepOrder: string[];
 }
 
+const EMPTY_PERSONAL: ResumePersonal = {
+  firstName: '', lastName: '', professionalTitle: '',
+  email: '', phone: '', location: '', summary: '', links: [], image: null,
+};
+
 export function buildResume(input: BuildResumeInput): ResumeData {
   const enabledSections = [
     'personal',
@@ -60,7 +65,7 @@ export function buildResume(input: BuildResumeInput): ResumeData {
   ];
 
   return {
-    personal: input.personalInfo,
+    personal: input.personalInfo ?? EMPTY_PERSONAL,
     experience: input.experience,
     education: input.education,
     skills: input.skills,

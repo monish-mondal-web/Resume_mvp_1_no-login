@@ -31,7 +31,7 @@ function bullets(text: string) {
 }
 
 export function Template1({ data, options, activeSection, onSectionClick }: Props) {
-  const { personal, experience, education, skills, sectionOrder, enabledSections } = data;
+  const { personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null }, experience, education, skills, sectionOrder, enabledSections } = data;
   const accent  = ACCENT_COLORS[options.accentColor]?.hex ?? '#6366f1';
   const font    = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
   const fsBase  = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;

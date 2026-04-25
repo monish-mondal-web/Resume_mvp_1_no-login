@@ -1,36 +1,59 @@
-import { PersonalForm } from './PersonalForm';
-import { ExperienceForm } from './ExperienceForm';
-import { EducationForm } from './EducationForm';
+import dynamic from 'next/dynamic';
+import type { ComponentType } from 'react';
 
-// Placeholder for unmigrated forms
-const PlaceholderForm = ({ name }: { name: string }) => (
-  <div className="p-8 text-center text-slate-500 border border-dashed rounded-xl">
-    <p>{name} Form (Pending Migration to React Hook Form)</p>
+const Spinner = () => (
+  <div className="flex h-32 items-center justify-center">
+    <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
   </div>
 );
 
-export const formRegistry: Record<string, React.ComponentType<any>> = {
-  personal: PersonalForm,
-  experience: ExperienceForm,
-  education: EducationForm,
-  skills: () => <PlaceholderForm name="Skills" />,
-  projects: () => <PlaceholderForm name="Projects" />,
-  certificates: () => <PlaceholderForm name="Certificates" />,
-  coursework: () => <PlaceholderForm name="Coursework" />,
-  involvement: () => <PlaceholderForm name="Involvement" />,
-  awards: () => <PlaceholderForm name="Awards" />,
-  publications: () => <PlaceholderForm name="Publications" />,
-  references: () => <PlaceholderForm name="References" />,
-  achievements: () => <PlaceholderForm name="Achievements" />,
-  languages: () => <PlaceholderForm name="Languages" />,
-  softskills: () => <PlaceholderForm name="Soft Skills" />,
-  internships: () => <PlaceholderForm name="Internships" />,
-  freelance: () => <PlaceholderForm name="Freelance" />,
-  leadership: () => <PlaceholderForm name="Leadership" />,
-  volunteering: () => <PlaceholderForm name="Volunteering" />,
-  hobbies: () => <PlaceholderForm name="Hobbies" />,
-  conferences: () => <PlaceholderForm name="Conferences" />,
-  patents: () => <PlaceholderForm name="Patents" />,
-  extracurricular: () => <PlaceholderForm name="Extracurricular" />,
-  more: () => <PlaceholderForm name="Add More Sections" />,
+const PersonalForm    = dynamic(() => import('./PersonalForm').then((m) => ({ default: m.PersonalForm })), { loading: () => <Spinner /> });
+const ExperienceForm  = dynamic(() => import('./ExperienceForm').then((m) => ({ default: m.ExperienceForm })), { loading: () => <Spinner /> });
+const EducationForm   = dynamic(() => import('./EducationForm').then((m) => ({ default: m.EducationForm })), { loading: () => <Spinner /> });
+const SkillsForm      = dynamic(() => import('./SkillsForm').then((m) => ({ default: m.SkillsForm })), { loading: () => <Spinner /> });
+const MoreForm        = dynamic(() => import('./MoreForm').then((m) => ({ default: m.MoreForm })), { loading: () => <Spinner /> });
+
+const ProjectsForm      = dynamic(() => import('./SectionForms').then((m) => ({ default: m.ProjectsForm })), { loading: () => <Spinner /> });
+const CertificatesForm  = dynamic(() => import('./SectionForms').then((m) => ({ default: m.CertificatesForm })), { loading: () => <Spinner /> });
+const CourseworkForm    = dynamic(() => import('./SectionForms').then((m) => ({ default: m.CourseworkForm })), { loading: () => <Spinner /> });
+const InvolvementForm   = dynamic(() => import('./SectionForms').then((m) => ({ default: m.InvolvementForm })), { loading: () => <Spinner /> });
+const AwardsForm        = dynamic(() => import('./SectionForms').then((m) => ({ default: m.AwardsForm })), { loading: () => <Spinner /> });
+const PublicationsForm  = dynamic(() => import('./SectionForms').then((m) => ({ default: m.PublicationsForm })), { loading: () => <Spinner /> });
+const ReferencesForm    = dynamic(() => import('./SectionForms').then((m) => ({ default: m.ReferencesForm })), { loading: () => <Spinner /> });
+const AchievementsForm  = dynamic(() => import('./SectionForms').then((m) => ({ default: m.AchievementsForm })), { loading: () => <Spinner /> });
+const LanguagesForm     = dynamic(() => import('./SectionForms').then((m) => ({ default: m.LanguagesForm })), { loading: () => <Spinner /> });
+const SoftSkillsForm    = dynamic(() => import('./SectionForms').then((m) => ({ default: m.SoftSkillsForm })), { loading: () => <Spinner /> });
+const InternshipsForm   = dynamic(() => import('./SectionForms').then((m) => ({ default: m.InternshipsForm })), { loading: () => <Spinner /> });
+const FreelanceForm     = dynamic(() => import('./SectionForms').then((m) => ({ default: m.FreelanceForm })), { loading: () => <Spinner /> });
+const LeadershipForm    = dynamic(() => import('./SectionForms').then((m) => ({ default: m.LeadershipForm })), { loading: () => <Spinner /> });
+const VolunteeringForm  = dynamic(() => import('./SectionForms').then((m) => ({ default: m.VolunteeringForm })), { loading: () => <Spinner /> });
+const HobbiesForm       = dynamic(() => import('./SectionForms').then((m) => ({ default: m.HobbiesForm })), { loading: () => <Spinner /> });
+const ConferencesForm   = dynamic(() => import('./SectionForms').then((m) => ({ default: m.ConferencesForm })), { loading: () => <Spinner /> });
+const PatentsForm       = dynamic(() => import('./SectionForms').then((m) => ({ default: m.PatentsForm })), { loading: () => <Spinner /> });
+const ExtracurricularForm = dynamic(() => import('./SectionForms').then((m) => ({ default: m.ExtracurricularForm })), { loading: () => <Spinner /> });
+
+export const formRegistry: Record<string, ComponentType<any>> = {
+  personal:        PersonalForm,
+  experience:      ExperienceForm,
+  education:       EducationForm,
+  skills:          SkillsForm,
+  more:            MoreForm,
+  projects:        ProjectsForm,
+  certificates:    CertificatesForm,
+  coursework:      CourseworkForm,
+  involvement:     InvolvementForm,
+  awards:          AwardsForm,
+  publications:    PublicationsForm,
+  references:      ReferencesForm,
+  achievements:    AchievementsForm,
+  languages:       LanguagesForm,
+  softskills:      SoftSkillsForm,
+  internships:     InternshipsForm,
+  freelance:       FreelanceForm,
+  leadership:      LeadershipForm,
+  volunteering:    VolunteeringForm,
+  hobbies:         HobbiesForm,
+  conferences:     ConferencesForm,
+  patents:         PatentsForm,
+  extracurricular: ExtracurricularForm,
 };

@@ -1,8 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { OnboardingClient } from './OnboardingClient';
-import { Navbar } from '@/components/features/home/Navbar';
+import { RefactoredOnboardingClient } from '@/components/features/onboarding/RefactoredOnboardingClient';
 
 export const metadata = {
   title: 'Setup Your Resume — FreshResume',
@@ -11,10 +10,10 @@ export const metadata = {
 
 export default async function OnboardingPage() {
   const session = await getServerSession(authOptions);
-  
+
   if (session?.user?.isProfileCompleted) {
     redirect('/dashboard');
   }
 
-  return <OnboardingClient />;
+  return <RefactoredOnboardingClient />;
 }

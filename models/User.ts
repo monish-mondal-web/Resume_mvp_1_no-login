@@ -105,24 +105,73 @@ const UserSchema = new Schema(
         tech: String,
         isHidden: Boolean,
       }],
-      // Other flexible sections
-      certificates: [Schema.Types.Mixed],
-      coursework: [Schema.Types.Mixed],
-      involvement: [Schema.Types.Mixed],
-      awards: [Schema.Types.Mixed],
-      publications: [Schema.Types.Mixed],
-      references: [Schema.Types.Mixed],
-      achievements: [Schema.Types.Mixed],
-      languages: [Schema.Types.Mixed],
-      softskills: [Schema.Types.Mixed],
-      internships: [Schema.Types.Mixed],
-      freelance: [Schema.Types.Mixed],
-      leadership: [Schema.Types.Mixed],
-      volunteering: [Schema.Types.Mixed],
-      hobbies: [Schema.Types.Mixed],
-      conferences: [Schema.Types.Mixed],
-      patents: [Schema.Types.Mixed],
-      extracurricular: [Schema.Types.Mixed],
+      certificates: [{
+        id: String, name: String, issuer: String,
+        issueDate: String, expDate: String, noExp: Boolean,
+        credId: String, credUrl: String, isHidden: Boolean,
+      }],
+      coursework: [{
+        id: String, course: String, institution: String,
+        grade: String, year: String, isHidden: Boolean,
+      }],
+      involvement: [{
+        id: String, organization: String, role: String,
+        start: String, end: String, current: Boolean,
+        description: String, isHidden: Boolean,
+      }],
+      awards: [{
+        id: String, name: String, issuer: String,
+        date: String, description: String, isHidden: Boolean,
+      }],
+      publications: [{
+        id: String, title: String, publisher: String,
+        date: String, url: String, description: String, isHidden: Boolean,
+      }],
+      references: [{
+        id: String, name: String, title: String, company: String,
+        email: String, phone: String, relationship: String, isHidden: Boolean,
+      }],
+      achievements: [{
+        id: String, title: String, issuer: String,
+        date: String, description: String, isHidden: Boolean,
+      }],
+      languages: [{
+        id: String, language: String, proficiency: String, isHidden: Boolean,
+      }],
+      softskills: [{
+        id: String, skill: String, isHidden: Boolean,
+      }],
+      internships: [{
+        id: String, role: String, company: String, start: String, end: String,
+        location: String, currentlyWorking: Boolean, description: String, isHidden: Boolean,
+      }],
+      freelance: [{
+        id: String, role: String, client: String, start: String, end: String,
+        currentlyWorking: Boolean, description: String, isHidden: Boolean,
+      }],
+      leadership: [{
+        id: String, role: String, organization: String, start: String, end: String,
+        current: Boolean, description: String, isHidden: Boolean,
+      }],
+      volunteering: [{
+        id: String, role: String, organization: String, start: String, end: String,
+        current: Boolean, description: String, isHidden: Boolean,
+      }],
+      hobbies: [{
+        id: String, name: String, isHidden: Boolean,
+      }],
+      conferences: [{
+        id: String, title: String, organizer: String,
+        date: String, description: String, isHidden: Boolean,
+      }],
+      patents: [{
+        id: String, title: String, issuer: String, date: String,
+        url: String, description: String, isHidden: Boolean,
+      }],
+      extracurricular: [{
+        id: String, activity: String, organization: String,
+        start: String, end: String, description: String, isHidden: Boolean,
+      }],
     },
   },
   { timestamps: true }
