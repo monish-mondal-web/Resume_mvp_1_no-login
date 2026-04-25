@@ -296,7 +296,6 @@ export function OnboardingClient() {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
-  const { leftWidth, onDividerMouseDown } = useResizablePane(containerWidth);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -770,12 +769,13 @@ export function OnboardingClient() {
         </div>
       </div>
 
-      {/* ── Left pane: sidebar + form ── */}
-      <div className="hidden md:flex overflow-hidden border-r border-slate-200 flex-shrink-0" style={{ width: leftWidth }}>
+      {/* ── Main Layout Wrapper: 3 sections ── */}
+      <div className="flex flex-1 overflow-hidden relative" suppressHydrationWarning>
 
       {/* â”€â”€ Sidebar â”€â”€ */}
-      <aside className="hidden w-[280px] flex-shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
-        <div className="flex-shrink-0 border-b border-slate-50 px-5 py-2 pt-4">
+      {/* ── Section 1: Build Steps Sidebar (Approx 30%) ── */}
+      <aside className="hidden md:flex w-[20%] min-w-[260px] max-w-[300px] flex-shrink-0 flex-col border-r border-slate-200 bg-white">
+        <div className="flex-shrink-0 border-b border-slate-50 px-5 py-1.5">
           <SidebarBreadcrumb />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-5">
@@ -842,8 +842,8 @@ export function OnboardingClient() {
         </div>
       </aside>
 
-      {/* â”€â”€ Main Content â”€â”€ */}
-      <main className="flex flex-1 flex-col overflow-hidden bg-slate-50">
+      {/* ── Section 2: Form Section (Approx 35%, expands when preview hidden) ── */}
+      <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 transition-all duration-500 ease-in-out">
         {/* Mobile horizontal step navigator */}
         <div ref={stepNavRef} className="md:hidden overflow-x-auto border-b border-slate-100 bg-white scrollbar-none flex-shrink-0">
           <div className="flex items-center gap-0.5 px-3 py-2 min-w-max">
@@ -910,16 +910,17 @@ export function OnboardingClient() {
         {/* Desktop action bar */}
         <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 md:flex md:items-center sm:px-8 md:px-10">
           <div className="flex w-full items-center justify-between">
-            <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600">Reset</button>
-            <button
-              onClick={() => setShowPreview(p => !p)}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/>
-              </svg>
-              {showPreview ? 'Hide Preview' : 'Show Preview'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600 px-1">Reset</button>
+              <div className="h-4 w-px bg-slate-200" />
+              <button
+                onClick={() => setShowPreview(p => !p)}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                {showPreview ? <FiEyeOff className="text-sm" /> : <FiEye className="text-sm" />}
+                <span className="font-medium">{showPreview ? 'Hide Preview' : 'Show Preview'}</span>
+              </button>
+            </div>
             {isLastStep ? (
               <button onClick={handleComplete} disabled={isLoading}
                 className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
@@ -938,42 +939,42 @@ export function OnboardingClient() {
 
       </div>{/* end left pane */}
 
-      {/* ── Resize divider ── */}
-      <div
-        onMouseDown={onDividerMouseDown}
-        className={`hidden md:flex w-1.5 flex-shrink-0 cursor-col-resize items-center justify-center bg-slate-200 hover:bg-indigo-400/60 transition-colors active:bg-indigo-500/60 group ${showPreview ? '' : 'opacity-0 pointer-events-none'}`}
-      >
-        <div className="h-8 w-0.5 rounded-full bg-slate-400 group-hover:bg-white/80" />
-      </div>
-
-      {/* ── Right pane: live preview ── */}
-      <div
-        className="hidden md:block overflow-hidden flex-shrink-0"
-        style={{
-          flex: showPreview ? '1 1 0' : '0 0 0',
-          width: showPreview ? undefined : 0,
-          minWidth: 0,
-          transition: 'flex 300ms ease, width 300ms ease',
+      {/* ── Section 3: Resume Preview (Approx 35%, slides to right) ── */}
+      <div 
+        className="hidden md:block overflow-hidden flex-shrink-0 border-l border-slate-200 bg-[#e8eaed] transition-all duration-500 ease-in-out"
+        style={{ 
+          width: showPreview ? '35%' : '0%',
+          opacity: showPreview ? 1 : 0,
+          visibility: showPreview ? 'visible' : 'hidden'
         }}
       >
-        {isMounted && (
-          <ResumePreview
-            data={resumeData}
-            templateId={previewTemplate}
-            templateOptions={templateOptions}
-            onTemplateChange={setPreviewTemplate}
-            onOptionsChange={(opts) => {
-              setTemplateOptions(opts);
-              localStorage.setItem('resumeTemplateOptions', JSON.stringify(opts));
-            }}
-            activeSection={activeStep}
-            onSectionClick={(id) => setActiveStep(id)}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={undo}
-            onRedo={redo}
-          />
-        )}
+        <div 
+          className="h-full transition-transform duration-500 ease-in-out"
+          style={{ 
+            transform: showPreview ? 'translateX(0)' : 'translateX(100%)',
+            width: '100%',
+            minWidth: '500px' // Keep content stable during transition
+          }}
+        >
+          {isMounted && (
+            <ResumePreview
+              data={resumeData}
+              templateId={previewTemplate}
+              templateOptions={templateOptions}
+              onTemplateChange={setPreviewTemplate}
+              onOptionsChange={(opts) => {
+                setTemplateOptions(opts);
+                localStorage.setItem('resumeTemplateOptions', JSON.stringify(opts));
+              }}
+              activeSection={activeStep}
+              onSectionClick={(id) => setActiveStep(id)}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+            />
+          )}
+        </div>
       </div>
 
           </>

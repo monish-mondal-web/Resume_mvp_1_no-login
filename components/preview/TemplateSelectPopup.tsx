@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void;
 }
 
-function MiniTemplate1({ hex }: { hex: string }) {
+export function MiniTemplate1({ hex }: { hex: string }) {
   return (
     <svg viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
       <rect width="120" height="160" rx="4" fill="#fff" />
@@ -46,7 +46,7 @@ function MiniTemplate1({ hex }: { hex: string }) {
   );
 }
 
-function MiniTemplate2({ hex }: { hex: string }) {
+export function MiniTemplate2({ hex }: { hex: string }) {
   return (
     <svg viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
       <rect width="120" height="160" rx="4" fill="#fff" />
@@ -83,7 +83,7 @@ function MiniTemplate2({ hex }: { hex: string }) {
   );
 }
 
-const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
+export const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
   { id: 'template1', name: 'ATS Clean',    desc: 'Single column, recruiter-friendly' },
   { id: 'template2', name: 'Banking Pro',  desc: 'Two column, professional sidebar'  },
 ];
