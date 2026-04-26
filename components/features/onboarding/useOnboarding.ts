@@ -15,7 +15,7 @@ import type { OnboardingFormValues } from './types';
 import { BASE_STEPS, MORE_SECTION_DEFS } from './OnboardingConfig';
 import { buildResume } from '@/lib/resume-builder';
 import { useResumeHistory } from '@/hooks/useResumeHistory';
-import type { TemplateId, TemplateOptions } from '@/types/resume.types';
+import type { TemplateId, TemplateOptions, ResumeData } from '@/types/resume.types';
 import { DEFAULT_TEMPLATE_OPTIONS } from '@/types/resume.types';
 import {
   DEF_EXP, DEF_EDU, DEF_SKILLS, DEF_PROJ, DEF_CERT, DEF_COURSE, DEF_INV,
@@ -243,13 +243,13 @@ export function useOnboarding(session: any) {
         } catch (e) {
           console.warn('LocalStorage save failed:', e);
         }
-      }, 700);
+      }, 1500);
     });
     return () => {
       subscription.unsubscribe();
       if (lsDebounceRef.current) clearTimeout(lsDebounceRef.current);
     };
-  }, [methods.watch, activeStep, visitedSteps, selectedMoreIds, stepOrder]);
+  }, [methods, activeStep, visitedSteps, selectedMoreIds, stepOrder]);
 
   // ── Persist nav state to localStorage when it changes ──
   useEffect(() => {
@@ -306,11 +306,9 @@ export function useOnboarding(session: any) {
 
   const progressSteps = useMemo(() => allSteps.filter(s => s.id !== 'more'), [allSteps]);
 
-  // ── Step completion (reads from RHF) ──
-  const formValues = methods.watch();
-
+  // ── Step completion — reads lazily via getValues, no render-path subscription ──
   const isStepComplete = useCallback((id: string): boolean => {
-    const v = formValues;
+    const v = methods.getValues();
     switch (id) {
       case 'personal':       return !!(v.personalInfo?.firstName && v.personalInfo?.lastName && v.personalInfo?.email);
       case 'experience':     return (v.experience ?? []).some(e => e.role && e.company && e.start);
@@ -336,11 +334,25 @@ export function useOnboarding(session: any) {
       case 'extracurricular':return (v.extracurricular ?? []).some(e => e.activity && e.organization);
       default:               return false;
     }
-  }, [formValues]);
+  }, [methods]);
+
+  // Ticks at most every 500ms during typing — drives progress bar without per-keystroke re-renders
+  const [formRevision, setFormRevision] = useState(0);
+  const revisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const { unsubscribe } = methods.watch(() => {
+      if (revisionTimerRef.current) clearTimeout(revisionTimerRef.current);
+      revisionTimerRef.current = setTimeout(() => setFormRevision(r => r + 1), 500);
+    });
+    return () => {
+      unsubscribe();
+      if (revisionTimerRef.current) clearTimeout(revisionTimerRef.current);
+    };
+  }, [methods]);
 
   const completedCount = useMemo(
     () => progressSteps.filter(s => isStepComplete(s.id) && visitedSteps.has(s.id)).length,
-    [progressSteps, isStepComplete, visitedSteps]
+    [progressSteps, isStepComplete, visitedSteps, formRevision]
   );
   const totalCount  = progressSteps.length;
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
@@ -349,49 +361,114 @@ export function useOnboarding(session: any) {
   const currentStep  = allSteps[currentIndex] ?? allSteps[0];
   const isLastStep   = currentIndex === allSteps.length - 1;
 
-  // ── Resume data for preview ──
-  const resumeData = useMemo(() => buildResume({
-    personalInfo:   formValues.personalInfo,
-    experience:     formValues.experience     ?? [],
-    education:      formValues.education      ?? [],
-    skills:         formValues.skills         ?? [],
-    projects:       formValues.projects       ?? [],
-    certificates:   formValues.certificates   ?? [],
-    coursework:     formValues.coursework     ?? [],
-    involvement:    formValues.involvement    ?? [],
-    awards:         formValues.awards         ?? [],
-    publications:   formValues.publications   ?? [],
-    references:     formValues.references     ?? [],
-    achievements:   formValues.achievements   ?? [],
-    languages:      formValues.languages      ?? [],
-    softskills:     formValues.softskills     ?? [],
-    internships:    formValues.internships    ?? [],
-    freelance:      formValues.freelance      ?? [],
-    leadership:     formValues.leadership     ?? [],
-    volunteering:   formValues.volunteering   ?? [],
-    hobbies:        formValues.hobbies        ?? [],
-    conferences:    formValues.conferences    ?? [],
-    patents:        formValues.patents        ?? [],
-    extracurricular:formValues.extracurricular ?? [],
-    selectedMoreIds,
-    stepOrder,
-  }), [formValues, selectedMoreIds, stepOrder]);
+  // ── Resume preview data — subscription-based, 300ms debounced, zero render-path cost ──
+  // selectedMoreIds/stepOrder are captured in a ref so the subscription doesn't need to resubscribe
+  const previewMetaRef = useRef({ selectedMoreIds, stepOrder });
+  useEffect(() => { previewMetaRef.current = { selectedMoreIds, stepOrder }; }, [selectedMoreIds, stepOrder]);
 
-  // ── Debounced resume data for preview (300ms, prevents flicker) ──
-  const [debouncedResumeData, setDebouncedResumeData] = useState(resumeData);
+  const [debouncedResumeData, setDebouncedResumeData] = useState<ResumeData>(() =>
+    buildResume({ personalInfo: methods.getValues().personalInfo, experience: [], education: [], skills: [],
+      projects: [], certificates: [], coursework: [], involvement: [], awards: [], publications: [],
+      references: [], achievements: [], languages: [], softskills: [], internships: [], freelance: [],
+      leadership: [], volunteering: [], hobbies: [], conferences: [], patents: [], extracurricular: [],
+      selectedMoreIds, stepOrder })
+  );
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
-    previewDebounceRef.current = setTimeout(() => setDebouncedResumeData(resumeData), 300);
-    return () => { if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current); };
-  }, [resumeData]);
+    const { unsubscribe } = methods.watch((v) => {
+      if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      previewDebounceRef.current = setTimeout(() => {
+        const { selectedMoreIds: smi, stepOrder: so } = previewMetaRef.current;
+        setDebouncedResumeData(buildResume({
+          personalInfo:    v.personalInfo as any,
+          experience:      (v.experience      ?? []) as any,
+          education:       (v.education       ?? []) as any,
+          skills:          (v.skills          ?? []) as any,
+          projects:        (v.projects        ?? []) as any,
+          certificates:    (v.certificates    ?? []) as any,
+          coursework:      (v.coursework      ?? []) as any,
+          involvement:     (v.involvement     ?? []) as any,
+          awards:          (v.awards          ?? []) as any,
+          publications:    (v.publications    ?? []) as any,
+          references:      (v.references      ?? []) as any,
+          achievements:    (v.achievements    ?? []) as any,
+          languages:       (v.languages       ?? []) as any,
+          softskills:      (v.softskills      ?? []) as any,
+          internships:     (v.internships     ?? []) as any,
+          freelance:       (v.freelance       ?? []) as any,
+          leadership:      (v.leadership      ?? []) as any,
+          volunteering:    (v.volunteering    ?? []) as any,
+          hobbies:         (v.hobbies         ?? []) as any,
+          conferences:     (v.conferences     ?? []) as any,
+          patents:         (v.patents         ?? []) as any,
+          extracurricular: (v.extracurricular ?? []) as any,
+          selectedMoreIds: smi,
+          stepOrder:       so,
+        }));
+      }, 300);
+    });
+    return () => {
+      unsubscribe();
+      if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+    };
+  }, [methods]);
+
+  // Immediately rebuild preview when section visibility / order changes
+  useEffect(() => {
+    const v = methods.getValues();
+    setDebouncedResumeData(buildResume({
+      personalInfo:    v.personalInfo,
+      experience:      v.experience      ?? [],
+      education:       v.education       ?? [],
+      skills:          v.skills          ?? [],
+      projects:        v.projects        ?? [],
+      certificates:    v.certificates    ?? [],
+      coursework:      v.coursework      ?? [],
+      involvement:     v.involvement     ?? [],
+      awards:          v.awards          ?? [],
+      publications:    v.publications    ?? [],
+      references:      v.references      ?? [],
+      achievements:    v.achievements    ?? [],
+      languages:       v.languages       ?? [],
+      softskills:      v.softskills      ?? [],
+      internships:     v.internships     ?? [],
+      freelance:       v.freelance       ?? [],
+      leadership:      v.leadership      ?? [],
+      volunteering:    v.volunteering    ?? [],
+      hobbies:         v.hobbies         ?? [],
+      conferences:     v.conferences     ?? [],
+      patents:         v.patents         ?? [],
+      extracurricular: v.extracurricular ?? [],
+      selectedMoreIds,
+      stepOrder,
+    }));
+  }, [selectedMoreIds, stepOrder, methods]);
+
+  // ── Snapshot for undo/redo — 300ms debounced, causes at most ~3 re-renders/sec ──
+  const [formSnapshot, setFormSnapshot] = useState<OnboardingFormValues>(
+    () => methods.getValues() as OnboardingFormValues
+  );
+  const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const { unsubscribe } = methods.watch((values) => {
+      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = setTimeout(
+        () => setFormSnapshot(values as OnboardingFormValues), 300
+      );
+    });
+    return () => {
+      unsubscribe();
+      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    };
+  }, [methods]);
 
   // ── Undo / redo ──
   const applySnapshot = useCallback((snap: OnboardingFormValues) => {
     methods.reset(snap, { keepDefaultValues: true });
   }, [methods]);
 
-  const { canUndo, canRedo, undo, redo } = useResumeHistory(formValues, applySnapshot);
+  const { canUndo, canRedo, undo, redo } = useResumeHistory(formSnapshot, applySnapshot);
 
   // ── Keyboard shortcuts ──
   useEffect(() => {

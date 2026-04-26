@@ -84,12 +84,11 @@ export function Autocomplete({
   trackOnBlur = true,
 }: AutocompleteProps) {
   const [query, setQuery] = useState(value || '');
-  const [prevValue, setPrevValue] = useState(value || '');
 
-  if (value !== prevValue) {
-    setPrevValue(value);
-    setQuery(value);
-  }
+  // Sync external value changes into local query state (e.g. form reset, programmatic setValue)
+  useEffect(() => {
+    setQuery(value ?? '');
+  }, [value]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -209,6 +208,7 @@ export function Autocomplete({
         aria-expanded={open}
         aria-controls={open ? `${id || 'autocomplete'}-listbox` : undefined}
         aria-haspopup="listbox"
+        aria-activedescendant={open && activeIdx >= 0 ? `${id || 'autocomplete'}-opt-${activeIdx}` : undefined}
       />
 
       {loading && (
@@ -229,6 +229,7 @@ export function Autocomplete({
           {suggestions.map((s, i) => (
             <li
               key={`${s.value}-${i}`}
+              id={`${id || 'autocomplete'}-opt-${i}`}
               role="option"
               aria-selected={i === activeIdx}
               onPointerDown={(e) => {

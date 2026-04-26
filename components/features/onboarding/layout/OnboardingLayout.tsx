@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -27,9 +27,38 @@ const AuthModal = dynamic(
   { loading: () => null }
 );
 
+function ResumePreviewSkeleton() {
+  return (
+    <div className="flex h-full w-full animate-pulse flex-col bg-slate-100">
+      <div className="h-11 w-full flex-shrink-0 border-b border-slate-200 bg-white/90" />
+      <div className="flex flex-1 items-start justify-center overflow-hidden p-4">
+        <div className="w-full max-w-[500px] rounded-xl bg-white shadow-md">
+          <div className="space-y-4 p-8">
+            <div className="mx-auto h-5 w-2/5 rounded bg-slate-200" />
+            <div className="mx-auto h-3 w-1/3 rounded bg-slate-200" />
+            <div className="mx-auto h-3 w-1/2 rounded bg-slate-100" />
+            <div className="my-4 h-px w-full bg-slate-100" />
+            <div className="h-3 w-1/4 rounded bg-slate-300" />
+            <div className="space-y-2 pt-1">
+              <div className="h-2.5 w-full rounded bg-slate-200" />
+              <div className="h-2.5 w-11/12 rounded bg-slate-200" />
+              <div className="h-2.5 w-4/5 rounded bg-slate-200" />
+            </div>
+            <div className="h-3 w-1/4 rounded bg-slate-300 pt-2" />
+            <div className="space-y-2 pt-1">
+              <div className="h-2.5 w-full rounded bg-slate-200" />
+              <div className="h-2.5 w-3/4 rounded bg-slate-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ResumePreview = dynamic(
   () => import('@/components/preview/ResumePreview').then((m) => ({ default: m.ResumePreview })),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => <ResumePreviewSkeleton /> }
 );
 
 // ── Grip icon ─────────────────────────────────────────────────────────────────
@@ -89,7 +118,7 @@ function SidebarStepItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} style={style} className="relative" data-stepid={step.id}>
       {!isLast && (
         <div className="absolute left-[27px] top-[44px] bottom-[-16px] w-px bg-slate-200 z-0" />
       )}
@@ -322,6 +351,13 @@ export function OnboardingLayout({
   setConfirmModal,
 }: OnboardingLayoutProps) {
   const sortableStepIds = allSteps.filter((s) => s.id !== 'more').map((s) => s.id);
+  const sidebarNavRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sidebarNavRef.current) return;
+    const el = sidebarNavRef.current.querySelector<HTMLElement>(`[data-stepid="${activeStep}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [activeStep]);
 
   return (
     <section className="flex h-screen flex-col overflow-hidden bg-slate-50">
@@ -487,7 +523,7 @@ export function OnboardingLayout({
                 <div className="flex-shrink-0 border-b border-slate-50 px-5 py-1.5">
                   <SidebarBreadcrumb />
                 </div>
-                <div className="flex-1 overflow-y-auto px-4 py-5">
+                <div ref={sidebarNavRef} className="flex-1 overflow-y-auto px-4 py-5">
                   <p className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Build Steps</p>
                   <DndContext
                     sensors={sensors}

@@ -30,14 +30,14 @@ function bullets(text: string, fs: number) {
   ));
 }
 
-// Classic Academic template — two-column header, section+rule style
-export function Template1({ data, options, activeSection, onSectionClick }: Props) {
+// Professional Executive template — centered header with accent title, dot contacts, prominent sections
+export function Template3({ data, options, activeSection, onSectionClick }: Props) {
   const {
     personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null },
     experience = [], education = [], skills = [], sectionOrder = [], enabledSections = [],
   } = data;
 
-  const accent  = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#4f46e5';
+  const accent  = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#0f766e';
   const font    = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
   const fs      = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
   const gap     = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
@@ -47,40 +47,43 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
     activeSection === id ? { outline: `2px solid ${accent}`, outlineOffset: 2, borderRadius: 3 } : {};
   const click = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); onSectionClick?.(id); };
 
+  // Professional: larger UPPERCASE + thin gray rule
   const SectionHeader = ({ label }: { label: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5, marginTop: 2 }}>
+    <div style={{ marginBottom: 6, marginTop: 2 }}>
       <h2 style={{
-        fontSize: fs - 0.5, fontWeight: 700, letterSpacing: '0.1em', color: '#111827',
-        textTransform: 'uppercase', whiteSpace: 'nowrap', marginRight: 8, flexShrink: 0, lineHeight: 1.2,
+        fontSize: fs + 0.5, fontWeight: 700, letterSpacing: '0.08em', color: '#111827',
+        textTransform: 'uppercase', lineHeight: 1.2, marginBottom: 3,
       }}>
         {label}
       </h2>
-      <div style={{ flex: 1, height: 0.75, backgroundColor: accent }} />
+      <div style={{ height: 0.75, backgroundColor: '#d1d5db' }} />
     </div>
   );
 
   const DateStr = ({ start, end, current }: { start?: string; end?: string; current?: boolean }) => (
-    <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>
+    <span style={{ fontSize: fs - 1, color: '#6b7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
       {fmtDate(start ?? '')}{(end || current) ? ` – ${current ? 'Present' : fmtDate(end ?? '')}` : ''}
     </span>
   );
 
+  // Professional: Role bold | Company in accent | Date right; location below
   const WorkEntry = ({ role, org, location, start, end, current, desc }: {
     role?: string; org?: string; location?: string;
     start?: string; end?: string; current?: boolean; desc?: string;
   }) => (
     <div style={{ marginBottom: gap * 0.75, breakInside: 'avoid' as const }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
-        <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>{role}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
+        <div>
+          <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>{role}</span>
+          {org && <span style={{ fontSize: fs, color: accent, marginLeft: 6, fontWeight: 500 }}>{org}</span>}
+        </div>
         <DateStr start={start} end={end} current={current} />
       </div>
-      {org && (
-        <div style={{ fontSize: fs - 0.5, fontStyle: 'italic', color: '#374151' }}>
-          {org}{location ? `, ${location}` : ''}
-        </div>
+      {location && (
+        <div style={{ fontSize: fs - 1, color: '#6b7280', fontStyle: 'italic', marginTop: 1 }}>{location}</div>
       )}
       {desc && (
-        <ul style={{ margin: '2px 0 0', paddingLeft: 14, color: '#1f2937', listStyleType: 'disc' }}>
+        <ul style={{ margin: '3px 0 0', paddingLeft: 14, color: '#374151', listStyleType: 'disc' }}>
           {bullets(desc, fs)}
         </ul>
       )}
@@ -99,7 +102,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
         if (!enabledSections.includes('experience') || !items.length) return null;
         return (
           <div key="experience" data-section="experience" style={{ marginBottom: gap, ...ring('experience') }} onClick={click('experience')} className="cursor-pointer">
-            <SectionHeader label="Experience" />
+            <SectionHeader label="Professional Experience" />
             {items.map(e => <WorkEntry key={e.id} role={e.role} org={e.company} location={e.location} start={e.start} end={e.end} current={e.currentlyWorking} desc={e.description} />)}
           </div>
         );
@@ -133,19 +136,19 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
             {items.map(p => (
               <div key={p.id} style={{ marginBottom: gap * 0.75, breakInside: 'avoid' as const }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>
-                    {p.title}
-                    {p.tech && <span style={{ fontSize: fs - 1, fontWeight: 400, fontStyle: 'italic', color: '#4b5563', marginLeft: 6 }}>| {p.tech}</span>}
-                  </span>
+                  <div>
+                    <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>{p.title}</span>
+                    {p.tech && <span style={{ fontSize: fs - 1, color: accent, marginLeft: 6, fontWeight: 500 }}>{p.tech}</span>}
+                  </div>
                   {(p.start || p.end || p.ongoing) && (
-                    <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>
+                    <span style={{ fontSize: fs - 1, color: '#6b7280', flexShrink: 0 }}>
                       {fmtDate(p.start)}{(p.end || p.ongoing) ? ` – ${p.ongoing ? 'Ongoing' : fmtDate(p.end)}` : ''}
                     </span>
                   )}
                 </div>
-                {p.url && <div style={{ fontSize: fs - 1, color: accent }}>{p.url}</div>}
+                {p.url && <div style={{ fontSize: fs - 1, color: accent, marginTop: 1 }}>{p.url}</div>}
                 {p.description && (
-                  <ul style={{ margin: '2px 0 0', paddingLeft: 14, color: '#1f2937', listStyleType: 'disc' }}>
+                  <ul style={{ margin: '3px 0 0', paddingLeft: 14, color: '#374151', listStyleType: 'disc' }}>
                     {bullets(p.description, fs)}
                   </ul>
                 )}
@@ -163,17 +166,17 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
             {items.map(e => (
               <div key={e.id} style={{ marginBottom: gap * 0.6, breakInside: 'avoid' as const }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>
-                    {e.degree}{e.fieldOfStudy ? ` in ${e.fieldOfStudy}` : ''}
-                  </span>
-                  {e.gpa && <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>CGPA: {e.gpa}</span>}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: fs - 0.5, fontStyle: 'italic', color: '#374151' }}>{e.school}</span>
-                  <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>
+                  <div>
+                    <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>
+                      {e.degree}{e.fieldOfStudy ? ` in ${e.fieldOfStudy}` : ''}
+                    </span>
+                    {e.school && <span style={{ fontSize: fs, color: accent, marginLeft: 6, fontWeight: 500 }}>{e.school}</span>}
+                  </div>
+                  <span style={{ fontSize: fs - 1, color: '#6b7280', flexShrink: 0 }}>
                     {e.startYear}{e.endYear ? ` – ${e.endYear}` : ''}
                   </span>
                 </div>
+                {e.gpa && <div style={{ fontSize: fs - 1, color: '#6b7280', marginTop: 1 }}>CGPA: {e.gpa}</div>}
               </div>
             ))}
           </div>
@@ -206,9 +209,9 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
             <SectionHeader label="Languages" />
             <div style={{ columns: 2, fontSize: fs - 0.5 }}>
               {items.map(l => (
-                <div key={l.id} style={{ breakInside: 'avoid' }}>
+                <div key={l.id} style={{ breakInside: 'avoid', marginBottom: 2 }}>
                   <span style={{ fontWeight: 600 }}>{l.language}</span>
-                  {l.proficiency && <span style={{ color: '#4b5563' }}> [{l.proficiency}]</span>}
+                  {l.proficiency && <span style={{ color: '#6b7280' }}> [{l.proficiency}]</span>}
                 </div>
               ))}
             </div>
@@ -298,7 +301,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
               {items.map(p => (
                 <li key={p.id} style={{ marginBottom: 2, fontSize: fs - 0.5 }}>
                   <span style={{ fontWeight: 600 }}>{p.title}</span>
-                  {p.publisher && <span style={{ color: '#374151' }}> · {p.publisher}</span>}
+                  {p.publisher && <span style={{ color: accent }}> · {p.publisher}</span>}
                   {p.date && <span style={{ color: '#6b7280' }}> ({fmtDate(p.date)})</span>}
                 </li>
               ))}
@@ -325,12 +328,12 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
             {items.map(e => (
               <div key={e.id} style={{ marginBottom: gap * 0.6, breakInside: 'avoid' as const }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: fs, fontWeight: 700 }}>{e.role}</span>
-                  <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>
+                  <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>{e.role}</span>
+                  <span style={{ fontSize: fs - 1, color: '#6b7280', flexShrink: 0 }}>
                     {fmtDate(e.start ?? '')}{(e.end || e.current) ? ` – ${e.current ? 'Present' : fmtDate(e.end ?? '')}` : ''}
                   </span>
                 </div>
-                <div style={{ fontSize: fs - 0.5, fontStyle: 'italic', color: '#374151' }}>{e.organization}</div>
+                <div style={{ fontSize: fs - 0.5, color: accent, fontWeight: 500 }}>{e.organization}</div>
               </div>
             ))}
           </div>
@@ -428,56 +431,60 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
 
   return (
     <div
-      id="resume-template1"
-      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.4 }}
+      id="resume-template3"
+      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.4, position: 'relative' }}
     >
-      {/* ── Header: two-column ──────────────────────────────────────── */}
+      {/* ── Header: centered with accent title ───────────────────────── */}
       <div
         data-section="personal"
         onClick={click('personal')}
         className="cursor-pointer"
-        style={{ marginBottom: gap * 0.6, ...ring('personal') }}
+        style={{ textAlign: 'center', marginBottom: gap * 0.8, position: 'relative', ...ring('personal') }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          {/* Left column: name + title + summary */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: fs + 10, fontWeight: 700, color: '#111827', lineHeight: 1.1, marginBottom: 2, marginTop: 0 }}>
-              {personal.firstName} {personal.lastName}
-            </h1>
-            {personal.professionalTitle && (
-              <p style={{ fontSize: fs, color: '#374151', fontStyle: 'italic', margin: '0 0 4px' }}>
-                {personal.professionalTitle}
-              </p>
-            )}
-            {personal.summary && (
-              <p style={{ fontSize: fs - 0.5, color: '#374151', lineHeight: 1.55, margin: 0 }}>
-                {personal.summary}
-              </p>
-            )}
-          </div>
-          {/* Right column: photo + contacts */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 }}>
-            {options.showPhoto && personal.image?.url && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={personal.image.url}
-                alt="Profile"
-                width={56} height={56}
-                style={{ borderRadius: '50%', objectFit: 'cover', border: `2px solid ${accent}50`, marginBottom: 6, flexShrink: 0 }}
-                crossOrigin="anonymous"
-              />
-            )}
+        {options.showPhoto && personal.image?.url && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={personal.image.url}
+            alt="Profile"
+            width={60} height={60}
+            style={{ position: 'absolute', top: 0, right: 0, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${accent}50` }}
+            crossOrigin="anonymous"
+          />
+        )}
+        <h1 style={{ fontSize: fs + 14, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', lineHeight: 1.05, margin: 0 }}>
+          {personal.firstName} {personal.lastName}
+        </h1>
+        {personal.professionalTitle && (
+          <p style={{ fontSize: fs + 2, color: accent, fontWeight: 600, margin: '4px 0 0', letterSpacing: '0.02em' }}>
+            {personal.professionalTitle}
+          </p>
+        )}
+        {/* Contacts with dot separators */}
+        {contactItems.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', fontSize: fs - 1, color: '#4b5563', marginTop: 6, gap: 4 }}>
             {contactItems.map((item, i) => (
-              <span key={i} style={{ fontSize: fs - 1, color: '#4b5563', textAlign: 'right' }}>{item}</span>
+              <React.Fragment key={i}>
+                {i > 0 && <span style={{ color: '#9ca3af', fontSize: fs - 2 }}>●</span>}
+                <span>{item}</span>
+              </React.Fragment>
             ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Full-width accent rule ───────────────────────────────────── */}
-      <div style={{ height: 1.5, backgroundColor: accent, marginBottom: gap * 0.8 }} />
+      {/* ── Thin decorative rule ──────────────────────────────────────── */}
+      <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, marginBottom: gap }} />
 
-      {/* ── Sections ────────────────────────────────────────────────── */}
+      {/* ── Summary ──────────────────────────────────────────────────── */}
+      {personal.summary && (
+        <div data-section="personal" style={{ marginBottom: gap, textAlign: 'center' }}>
+          <p style={{ fontSize: fs - 0.5, color: '#374151', lineHeight: 1.6, margin: '0 auto', maxWidth: '85%' }}>
+            {personal.summary}
+          </p>
+        </div>
+      )}
+
+      {/* ── Sections ─────────────────────────────────────────────────── */}
       {orderedIds.map(id => renderSection(id))}
     </div>
   );

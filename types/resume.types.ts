@@ -214,7 +214,7 @@ export interface ResumeExtracurricular {
 
 // ── Template & Design Types ──────────────────────────────────────────────────
 
-export type TemplateId = 'template1' | 'template2';
+export type TemplateId = 'template1' | 'template2' | 'template3';
 
 export type AccentColor =
   | 'indigo' | 'violet' | 'blue' | 'sky' | 'teal'
@@ -226,12 +226,16 @@ export type SpacingOption = 'compact' | 'normal' | 'relaxed';
 
 export type FontFamily = 'sans' | 'serif' | 'mono' | 'inter' | 'georgia';
 
+export type PagePadding = 'narrow' | 'normal' | 'wide';
+
 export interface TemplateOptions {
   accentColor: AccentColor;
   fontSize: FontSize;
   spacing: SpacingOption;
   fontFamily: FontFamily;
   showPhoto: boolean;
+  customAccentColor?: string;
+  pagePadding?: PagePadding;
 }
 
 export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
@@ -240,6 +244,7 @@ export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   spacing: 'normal',
   fontFamily: 'sans',
   showPhoto: true,
+  pagePadding: 'normal',
 };
 
 export const ACCENT_COLORS: Record<AccentColor, { hex: string; label: string; tw: string }> = {

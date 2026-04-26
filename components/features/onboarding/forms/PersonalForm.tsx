@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { useSession } from 'next-auth/react';
 import { FiX, FiUpload, FiPlus, FiArrowRight, FiAlertTriangle } from 'react-icons/fi';
 import { FaLinkedin, FaGithub, FaXTwitter, FaDiscord, FaFigma, FaDribbble, FaBehance, FaSketch } from 'react-icons/fa6';
@@ -57,6 +57,11 @@ function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
     if (staged) URL.revokeObjectURL(staged.preview);
     setStaged({ file, preview: URL.createObjectURL(file) });
   };
+
+  useEffect(() => {
+    const preview = staged?.preview;
+    return () => { if (preview) URL.revokeObjectURL(preview); };
+  }, [staged?.preview]);
 
   useEffect(() => {
     if (!uploading) return;
@@ -253,11 +258,15 @@ function SummarySuggestionsModal({ currentTitle, onSelect, onClose }: {
 }
 
 export function PersonalForm() {
-  const { register, watch, setValue, control } = useFormContext<OnboardingFormValues>();
+  const { register, setValue, control } = useFormContext<OnboardingFormValues>();
   const { data: session } = useSession();
   const { showPhoto, onTogglePhoto } = useOnboardingContext();
 
-  const data = watch('personalInfo');
+  // Watch only the fields actually used for conditional rendering — avoids full-form re-renders on every keystroke
+  const image            = useWatch({ control, name: 'personalInfo.image' });
+  const firstName        = useWatch({ control, name: 'personalInfo.firstName' });
+  const lastName         = useWatch({ control, name: 'personalInfo.lastName' });
+  const professionalTitle = useWatch({ control, name: 'personalInfo.professionalTitle' });
   const { fields: links, append: appendLink, remove: removeLink } = useFieldArray({ control, name: 'personalInfo.links' });
 
   const [modalOpen, setModalOpen]         = useState(false);
@@ -275,8 +284,8 @@ export function PersonalForm() {
   }, [menuOpen]);
 
   const handleDeleteImage = async () => {
-    if (!data?.image) return;
-    const prevImage = data.image;
+    if (!image) return;
+    const prevImage = image;
     setValue('personalInfo.image', null);
     if (prevImage.publicId) {
       try { await fetch(`/api/upload/image/delete?publicId=${encodeURIComponent(prevImage.publicId)}`, { method: 'DELETE' }); }
@@ -284,7 +293,7 @@ export function PersonalForm() {
     }
   };
 
-  const userInitial = data?.firstName?.[0]?.toUpperCase() ?? 'A';
+  const userInitial = firstName?.[0]?.toUpperCase() ?? 'A';
   const availablePlatforms = SOCIAL_PLATFORMS.filter(p => !links.some(l => l.type === p.id));
 
   return (
@@ -300,15 +309,15 @@ export function PersonalForm() {
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-500" />
                 </div>
               )}
-              {data?.image ? (
-                <Image src={data.image.url} alt="Profile" width={80} height={80}
+              {image ? (
+                <Image src={image.url} alt="Profile" width={80} height={80}
                   className={`h-full w-full object-cover transition-opacity duration-500 ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
                   onLoad={() => setImgLoading(false)} onError={() => setImgLoading(false)} />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-indigo-500">{userInitial}</div>
               )}
             </div>
-            {data?.image && !imgLoading && (
+            {image && !imgLoading && (
               <button onClick={handleDeleteImage} className="absolute -right-0.5 -top-0.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition group-hover:opacity-100">
                 <FiX className="text-[9px]" />
               </button>
@@ -318,7 +327,7 @@ export function PersonalForm() {
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setModalOpen(true)}
                 className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
-                <FiUpload className="text-sm" /> {data?.image ? 'Change photo' : 'Upload photo'}
+                <FiUpload className="text-sm" /> {image ? 'Change photo' : 'Upload photo'}
               </button>
               <a href="/ai-headshot" target="_blank" rel="noopener noreferrer"
                 className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-violet-700">
@@ -380,7 +389,7 @@ export function PersonalForm() {
                     {availablePlatforms.map(p => (
                       <button key={p.id} type="button"
                         onClick={() => {
-                          const username = ((data?.firstName || '') + (data?.lastName || '')).toLowerCase() || 'username';
+                          const username = ((firstName || '') + (lastName || '')).toLowerCase() || 'username';
                           appendLink({ type: p.id, url: p.placeholder.replace('{username}', username) });
                           setMenuOpen(false);
                         }}
@@ -404,7 +413,7 @@ export function PersonalForm() {
                   {p.icon}
                 </div>
                 <input type="text" {...register(`personalInfo.links.${i}.url` as const)}
-                  placeholder={p.placeholder.replace('{username}', ((data?.firstName || '') + (data?.lastName || '')).toLowerCase() || 'username')}
+                  placeholder={p.placeholder.replace('{username}', ((firstName || '') + (lastName || '')).toLowerCase() || 'username')}
                   className="w-full bg-transparent px-2.5 py-2 text-[13px] text-slate-900 outline-none transition-all placeholder:text-slate-300" />
                 <button type="button" onClick={() => removeLink(i)}
                   className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" title={`Remove ${p.label}`}>
@@ -418,7 +427,7 @@ export function PersonalForm() {
 
       {modalOpen && (
         <ImageUploadModal
-          currentPublicId={data?.image?.publicId}
+          currentPublicId={image?.publicId}
           session={session}
           onUploaded={(url, publicId) => { setImgLoading(true); setValue('personalInfo.image', { url, publicId }); setModalOpen(false); }}
           onClose={() => setModalOpen(false)}
@@ -426,7 +435,7 @@ export function PersonalForm() {
       )}
       {suggestionsOpen && (
         <SummarySuggestionsModal
-          currentTitle={data?.professionalTitle || ''}
+          currentTitle={professionalTitle || ''}
           onSelect={(s) => { setValue('personalInfo.summary', s); setSuggestionsOpen(false); }}
           onClose={() => setSuggestionsOpen(false)}
         />

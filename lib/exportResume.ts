@@ -1,64 +1,29 @@
-export async function downloadAsPDF(elementId: string, filename = 'resume.pdf'): Promise<void> {
-  const el = document.getElementById(elementId);
-  if (!el) throw new Error(`Element #${elementId} not found`);
+import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 
-  const html2canvas = (await import('html2canvas')).default;
-  const { jsPDF } = await import('jspdf');
-
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: false,
-    backgroundColor: '#ffffff',
+export async function downloadAsPDF(
+  data: ResumeData,
+  templateId: TemplateId,
+  options: TemplateOptions,
+  filename = 'resume.pdf',
+): Promise<void> {
+  const res = await fetch('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data, templateId, options }),
   });
 
-  const imgData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'px',
-    format: 'a4',
-  });
-
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const ratio = canvas.width / canvas.height;
-  const imgH  = pageW / ratio;
-
-  let yPos = 0;
-  let remaining = imgH;
-
-  while (remaining > 0) {
-    pdf.addImage(imgData, 'PNG', 0, -yPos, pageW, imgH);
-    remaining -= pageH;
-    yPos += pageH;
-    if (remaining > 0) pdf.addPage();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'PDF export failed' }));
+    throw new Error((err as { error?: string }).error ?? 'PDF export failed');
   }
 
-  pdf.save(filename);
-}
-
-export async function downloadAsImage(
-  elementId: string,
-  format: 'png' | 'jpg' = 'png',
-  filename?: string
-): Promise<void> {
-  const el = document.getElementById(elementId);
-  if (!el) throw new Error(`Element #${elementId} not found`);
-
-  const html2canvas = (await import('html2canvas')).default;
-
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: false,
-    backgroundColor: '#ffffff',
-  });
-
-  const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
-  const defaultName = filename ?? `resume.${format}`;
-
-  const link = document.createElement('a');
-  link.download = defaultName;
-  link.href = canvas.toDataURL(mimeType, 0.95);
-  link.click();
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

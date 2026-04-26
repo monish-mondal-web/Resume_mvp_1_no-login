@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 import { Template1 } from './templates/Template1';
 import { Template2 } from './templates/Template2';
+import { Template3 } from './templates/Template3';
 import { ATSScore } from './ATSScore';
 import { TemplateCustomizer } from './TemplateCustomizer';
-import { MiniTemplate1, MiniTemplate2, TEMPLATES } from './TemplateSelectPopup';
+import { MiniTemplate1, MiniTemplate2, MiniTemplate3, TEMPLATES } from './TemplateSelectPopup';
 import { ACCENT_COLORS } from '@/types/resume.types';
 import { computeATSScore } from '@/lib/resume-builder';
 import type { ATSResult } from '@/lib/resume-builder';
@@ -140,7 +142,7 @@ export function ResumePreview({
   onUndo, onRedo, canUndo = false, canRedo = false,
 }: Props) {
   const containerRef     = useRef<HTMLDivElement>(null);
-  const contentRef       = useRef<HTMLDivElement>(null);
+  const exportRef        = useRef<HTMLDivElement>(null);
   const nameMeasureRef   = useRef<HTMLSpanElement>(null);
   const [zoom, setZoom]  = useState(0.65);
   const [contentH, setContentH]       = useState(A4_H);
@@ -150,6 +152,8 @@ export function ResumePreview({
   const [isExporting, setIsExporting] = useState(false);
   const [fileName, setFileName]       = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
     if (!fileName && data.personal?.firstName) {
@@ -171,28 +175,33 @@ export function ResumePreview({
 
   useEffect(() => { setAtsResult(computeATSScore(data)); }, [data]);
 
+  // Measure the hidden export container (no CSS transforms) to get the true content height.
+  // The old approach watched contentRef which had height driven by contentH — a circular no-op.
   useEffect(() => {
-    if (!contentRef.current) return;
+    const el = exportRef.current;
+    if (!el) return;
     const ro = new ResizeObserver(entries => {
       const h = entries[0]?.contentRect?.height ?? A4_H;
       setContentH(h);
     });
-    ro.observe(contentRef.current);
+    ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  const doFit = useCallback(() => {
+  const doFit = useCallback((scrollToTop = false) => {
     if (!containerRef.current) return;
-    const pad = 12;
-    const w = containerRef.current.clientWidth - pad;
+    const w = containerRef.current.clientWidth - 32; // 16px padding each side
     if (w > 0) {
       setZoom(clamp(round2(w / A4_W), ZOOM_MIN, ZOOM_MAX));
+    }
+    if (scrollToTop) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
   }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    doFit();
+    doFit(true); // fit + scroll to top on mount
     const ro = new ResizeObserver(() => { if (isAutoFit.current) doFit(); });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -215,8 +224,8 @@ export function ResumePreview({
     const onScroll = () => {
       if (!el) return;
       const top = el.scrollTop;
-      const ph  = (A4_H * zoom) + 24;
-      const idx = Math.floor((top + ph/3) / ph);
+      const ph  = (A4_H * zoom) + 28; // 28px = separator label height between pages
+      const idx = Math.floor((top + ph / 3) / ph);
       setCurrentPage(Math.min(pageCount, idx + 1));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -229,7 +238,7 @@ export function ResumePreview({
 
   const fitZoom = useCallback(() => {
     isAutoFit.current = true;
-    doFit();
+    doFit(true);
   }, [doFit]);
 
   const fitWidth = useCallback(() => {
@@ -243,21 +252,20 @@ export function ResumePreview({
   const goToNextPage = () => {
     if (!containerRef.current) return;
     const nextIdx = currentPage >= pageCount ? 0 : currentPage;
-    const ph = (A4_H * zoom) + 24;
+    const ph = (A4_H * zoom) + 28;
     containerRef.current.scrollTo({ top: nextIdx * ph, behavior: 'smooth' });
   };
 
   const handleExport = async (type: 'pdf' | 'png' | 'jpg') => {
+    if (!session) { setShowLoginModal(true); return; }
     setIsExporting(true);
     try {
-      const elemId = templateId === 'template1' ? 'resume-template1' : 'resume-template2';
-      const name   = (fileName.trim() || (data.personal?.firstName ? `${data.personal.firstName}_resume` : 'resume')).toLowerCase().replace(/\s+/g, '-');
+      // Always capture the hidden export container — it renders at full 794px width
+      // with no CSS transforms, giving true 288 DPI output regardless of preview zoom.
+      const name = (fileName.trim() || (data.personal?.firstName ? `${data.personal.firstName}_resume` : 'resume')).toLowerCase().replace(/\s+/g, '-');
       if (type === 'pdf') {
         const { downloadAsPDF } = await import('@/lib/exportResume');
-        await downloadAsPDF(elemId, `${name}.pdf`);
-      } else {
-        const { downloadAsImage } = await import('@/lib/exportResume');
-        await downloadAsImage(elemId, type, `${name}.${type}`);
+        await downloadAsPDF(data, templateId, templateOptions, `${name}.pdf`);
       }
     } catch (err) { console.error('Export failed:', err); }
     finally { setIsExporting(false); }
@@ -265,23 +273,68 @@ export function ResumePreview({
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-slate-50">
+
+      {/* ── Hidden measurement container: full 794px, no transforms, drives pageCount ── */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'fixed', top: 0, left: -9999, width: A4_W, zIndex: -1, pointerEvents: 'none' }}
+      >
+        <div ref={exportRef}>
+          {templateId === 'template3'
+            ? <Template3 data={data} options={templateOptions} />
+            : templateId === 'template2'
+              ? <Template2 data={data} options={templateOptions} />
+              : <Template1 data={data} options={templateOptions} />}
+        </div>
+      </div>
+
+      {/* ── Login modal ─────────────────────────────────────────────────────── */}
+      {showLoginModal && (
+        <div
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="mb-1 text-xl font-bold text-slate-900">Sign in required</h2>
+            <p className="mb-6 text-sm text-slate-500">Please sign in to download your resume.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600 transition hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <a
+                href="/"
+                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-center text-sm font-medium text-white transition hover:bg-indigo-700"
+              >
+                Sign in
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* ── Floating Shortcut Tabs (Shown only when no panel is open) ───── */}
       {!activePanel && (
-        <div className="absolute right-0 top-1/2 z-[160] -translate-y-1/2 flex flex-col gap-1.5 pr-2">
+        <div className="absolute right-0 top-1/2 z-[160] -translate-y-1/2 flex flex-col overflow-hidden rounded-l-xl border border-slate-200 bg-white shadow-lg">
           {[
             { id: 'tpl', icon: FiLayout,  label: 'Layout' },
             { id: 'stl', icon: FiSliders, label: 'Style'  },
             { id: 'ats', icon: FiTarget,  label: 'ATS'    },
-          ].map((tab) => (
+          ].map((tab, i) => (
             <button
               key={tab.id}
               onClick={() => setActivePanel(tab.id as any)}
-              className="group relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-300 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105"
+              className={`group relative flex flex-col items-center justify-center gap-1 w-11 h-[52px] cursor-pointer text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600 ${i < 2 ? 'border-b border-slate-100' : ''}`}
             >
-              <tab.icon className="text-[17px] transition-transform group-hover:scale-110" />
-              <div className="absolute right-full mr-3 hidden group-hover:block pointer-events-none">
-                <div className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-2xl tracking-wide uppercase">{tab.label}</div>
+              <tab.icon className="text-[15px]" />
+              <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-500">{tab.label}</span>
+              <div className="absolute right-full mr-2 hidden group-hover:block pointer-events-none whitespace-nowrap">
+                <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl">{tab.label}</div>
               </div>
             </button>
           ))}
@@ -321,20 +374,41 @@ export function ResumePreview({
           </div>
         </div>
 
-        <div ref={containerRef} className="flex-1 overflow-auto bg-slate-100 p-1 scroll-smooth no-scrollbar">
-          <div className="flex flex-col items-center pt-0 pb-20" style={{ minWidth: A4_W * zoom }}>
-            <div ref={contentRef} className="bg-white shadow-2xl relative" style={{ width: A4_W * zoom, height: contentH * zoom }}>
-              {Array.from({ length: pageCount }).map((_, pageIdx) => {
-                const isLast = pageIdx === pageCount - 1;
-                return (
-                  <div key={pageIdx} className="relative bg-white" style={{ width: A4_W * zoom, height: A4_H * zoom, marginBottom: isLast ? 0 : 24 * zoom }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: A4_W, transformOrigin: 'top left', transform: `scale(${zoom}) translateY(-${pageIdx * A4_H}px)` }}>
-                      {templateId === 'template1' ? <Template1 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} /> : <Template2 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />}
-                    </div>
+        <div ref={containerRef} className="flex-1 overflow-auto bg-[#e2e5e9] scroll-smooth no-scrollbar">
+          <div className="flex flex-col items-center py-5 pb-24" style={{ minWidth: '100%' }}>
+            {Array.from({ length: pageCount }).map((_, pageIdx) => (
+              <div key={pageIdx} className="flex flex-col items-center" style={{ width: '100%' }}>
+                {/* Page separator label above page 2+ */}
+                {pageIdx > 0 && (
+                  <div className="flex items-center w-full px-4 py-2" style={{ maxWidth: A4_W * zoom + 48 }}>
+                    <div className="flex-1 h-px bg-slate-300/60" />
+                    <span className="mx-3 text-[9px] font-bold uppercase tracking-widest text-slate-400/80">
+                      Page {pageIdx + 1}
+                    </span>
+                    <div className="flex-1 h-px bg-slate-300/60" />
                   </div>
-                );
-              })}
-            </div>
+                )}
+                {pageIdx === 0 && <div style={{ height: 0 }} />}
+                {/* Page card */}
+                <div
+                  className="relative bg-white flex-shrink-0 overflow-hidden"
+                  style={{
+                    width: A4_W * zoom,
+                    height: A4_H * zoom,
+                    marginBottom: pageIdx < pageCount - 1 ? 0 : 0,
+                    boxShadow: '0 2px 16px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07)',
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: A4_W, transformOrigin: 'top left', transform: `scale(${zoom}) translateY(-${pageIdx * A4_H}px)` }}>
+                    {templateId === 'template3'
+                      ? <Template3 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />
+                      : templateId === 'template2'
+                        ? <Template2 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />
+                        : <Template1 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -383,7 +457,9 @@ export function ResumePreview({
                   return (
                     <button key={t.id} onClick={() => { onTemplateChange(t.id); }} className={`group relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                       <div className={`p-3 transition-colors ${isActive ? 'bg-indigo-50/50' : 'bg-slate-50 group-hover:bg-slate-100/50'}`}>
-                        <div className="mx-auto max-w-[140px] shadow-sm ring-1 ring-slate-900/5">{t.id === 'template1' ? <MiniTemplate1 hex={hex} /> : <MiniTemplate2 hex={hex} />}</div>
+                        <div className="mx-auto max-w-[140px] shadow-sm ring-1 ring-slate-900/5">
+                        {t.id === 'template3' ? <MiniTemplate3 hex={hex} /> : t.id === 'template2' ? <MiniTemplate2 hex={hex} /> : <MiniTemplate1 hex={hex} />}
+                      </div>
                       </div>
                       <div className="p-3 border-t border-slate-100">
                         <div className="flex items-center justify-between mb-1">
