@@ -1,11 +1,16 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   DndContext, DragOverlay, closestCenter,
 } from '@dnd-kit/core';
+import { BuilderTabBar, type BuilderTab } from './BuilderTabBar';
+import { SmartAssistPanel } from './SmartAssistPanel';
+import { OptimizeForJobPanel } from './OptimizeForJobPanel';
+import { ATSPanel } from './ATSPanel';
+import { CommandPalette } from './CommandPalette';
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -92,7 +97,7 @@ function SidebarBreadcrumb() {
           </svg>
         </li>
         <li>
-          <span className="text-sm font-semibold text-indigo-600" aria-current="page">Setup Resume</span>
+          <span className="text-sm font-medium text-indigo-600" aria-current="page">Setup Resume</span>
         </li>
       </ol>
     </nav>
@@ -350,6 +355,28 @@ export function OnboardingLayout({
   confirmModal,
   setConfirmModal,
 }: OnboardingLayoutProps) {
+  const [activeTab, setActiveTab] = useState<BuilderTab>('edit');
+  const [cmdOpen, setCmdOpen]     = useState(false);
+
+  // Save latest resume snapshot so /resume/resume-score can read it
+  useEffect(() => {
+    if (!debouncedResumeData) return;
+    try { localStorage.setItem('fr-resume-built', JSON.stringify(debouncedResumeData)); } catch {}
+  }, [debouncedResumeData]);
+
+  // Global Ctrl+K shortcut
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(v => !v);
+      }
+      if (e.key === 'Escape') setCmdOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const sortableStepIds = allSteps.filter((s) => s.id !== 'more').map((s) => s.id);
   const sidebarNavRef = useRef<HTMLDivElement>(null);
 
@@ -387,8 +414,8 @@ export function OnboardingLayout({
             >
               <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Navigation</p>
-                  <p className="text-sm font-semibold text-slate-800">Build Steps</p>
+                  <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Navigation</p>
+                  <p className="text-sm font-medium text-slate-800">Build Steps</p>
                 </div>
                 <button
                   onClick={() => setStepsDrawerOpen(false)}
@@ -398,7 +425,7 @@ export function OnboardingLayout({
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Steps</p>
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">Steps</p>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -432,12 +459,12 @@ export function OnboardingLayout({
                   </SortableContext>
                 </DndContext>
 
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Add Sections</p>
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">Add Sections</p>
                 {(['EXPERIENCE', 'SKILLS', 'ACADEMIC', 'OTHERS'] as const).map((group) => {
                   const items = MORE_SECTION_DEFS.filter((s) => s.group === group);
                   return (
                     <div key={group} className="mb-4">
-                      <p className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-widest text-slate-300">{group}</p>
+                      <p className="mb-1.5 px-1 text-[9px] font-medium uppercase tracking-widest text-slate-300">{group}</p>
                       <div className="grid grid-cols-2 gap-1.5">
                         {items.map((item) => {
                           const sel = selectedMoreIds.includes(item.id);
@@ -520,11 +547,11 @@ export function OnboardingLayout({
 
               {/* Desktop sidebar */}
               <aside className="hidden md:flex w-[20%] min-w-[260px] max-w-[300px] flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-                <div className="flex-shrink-0 border-b border-slate-50 px-5 py-1.5">
+                <div className="flex h-11 flex-shrink-0 items-center border-b border-slate-200 px-5">
                   <SidebarBreadcrumb />
                 </div>
                 <div ref={sidebarNavRef} className="flex-1 overflow-y-auto px-4 py-5">
-                  <p className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Build Steps</p>
+                  <p className="mb-4 px-2 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Build Steps</p>
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -595,80 +622,159 @@ export function OnboardingLayout({
 
               {/* Form section */}
               <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 transition-all duration-500 ease-in-out">
-                {/* Mobile horizontal step navigator */}
-                <div ref={stepNavRef} className="md:hidden overflow-x-auto border-b border-slate-100 bg-white scrollbar-none flex-shrink-0">
-                  <div className="flex items-center gap-0.5 px-3 py-2 min-w-max">
-                    {allSteps.map((step, index) => {
-                      const isActive = activeStep === step.id;
-                      const isDone   = isStepComplete(step.id) && visitedSteps.has(step.id) && !isActive;
-                      const isMore   = step.id === 'more';
-                      return (
-                        <button
-                          key={step.id}
-                          type="button"
-                          data-step={step.id}
-                          onClick={() => setActiveStep(step.id)}
-                          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
-                            isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
-                            isActive ? 'bg-indigo-600 text-white' : isDone ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-400'
-                          }`}>
-                            {isDone ? <FiCheck className="text-[8px]" /> : isMore ? <FiPlus className="text-[9px]" /> : index + 1}
-                          </span>
-                          <span className={`text-[11px] font-medium ${isActive ? 'text-indigo-700' : 'text-slate-500'}`}>{step.title}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* Form content */}
-                <div className="flex-1 overflow-y-auto pb-[8.5rem] md:pb-0">
-                  <div className="px-5 pb-8 pt-8 sm:px-8 md:px-10 md:pb-10 md:pt-12">
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                      Step {currentIndex + 1} / {allSteps.length}
-                    </p>
-                    <h1 className="text-2xl font-semibold text-slate-900 sm:text-[26px]">{currentStep.title}</h1>
-                    <p className="mt-1 text-sm text-slate-500">{currentStep.subtitle}</p>
-                    <div className="mt-7">
-                      {children}
+                {/* ── Builder tab bar ────────────────────────────────────── */}
+                <BuilderTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+                {/* ── Tab panels (all rendered, only active is visible) ── */}
+                <div className="relative flex-1 overflow-hidden">
+
+                  {/* ── EDIT tab ──────────────────────────────────────── */}
+                  <div
+                    className="absolute inset-0 flex flex-col"
+                    style={{
+                      opacity:        activeTab === 'edit' ? 1 : 0,
+                      transform:      activeTab === 'edit' ? 'translateY(0)' : 'translateY(10px)',
+                      pointerEvents:  activeTab === 'edit' ? 'auto' : 'none',
+                      transition:     'opacity 260ms ease, transform 260ms ease',
+                      zIndex:         activeTab === 'edit' ? 10 : 0,
+                    }}
+                  >
+                    {/* Mobile horizontal step navigator */}
+                    <div ref={stepNavRef} className="md:hidden overflow-x-auto border-b border-slate-100 bg-white scrollbar-none flex-shrink-0">
+                      <div className="flex items-center gap-0.5 px-3 py-2 min-w-max">
+                        {allSteps.map((step, index) => {
+                          const isActive = activeStep === step.id;
+                          const isDone   = isStepComplete(step.id) && visitedSteps.has(step.id) && !isActive;
+                          const isMore   = step.id === 'more';
+                          return (
+                            <button
+                              key={step.id}
+                              type="button"
+                              data-step={step.id}
+                              onClick={() => setActiveStep(step.id)}
+                              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                                isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
+                                isActive ? 'bg-indigo-600 text-white' : isDone ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-400'
+                              }`}>
+                                {isDone ? <FiCheck className="text-[8px]" /> : isMore ? <FiPlus className="text-[9px]" /> : index + 1}
+                              </span>
+                              <span className={`text-[11px] font-medium ${isActive ? 'text-indigo-700' : 'text-slate-500'}`}>{step.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Scrollable form content */}
+                    <div className="flex-1 overflow-y-auto pb-[8.5rem] md:pb-0">
+                      <div className="px-5 pb-8 pt-8 sm:px-8 md:px-10 md:pb-10 md:pt-12">
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-indigo-600">
+                          Step {currentIndex + 1} / {allSteps.length}
+                        </p>
+                        <h1 className="text-2xl font-bold text-slate-900 sm:text-[26px]">{currentStep.title}</h1>
+                        <p className="mt-1 text-sm text-slate-500">{currentStep.subtitle}</p>
+                        <div className="mt-7">
+                          {children}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desktop action bar */}
+                    <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 md:flex md:items-center sm:px-8 md:px-10">
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600 px-1">Reset</button>
+                          <div className="h-4 w-px bg-slate-200" />
+                          <button
+                            onClick={() => setShowPreview((p: boolean) => !p)}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                          >
+                            {showPreview ? <FiEyeOff className="text-sm" /> : <FiEye className="text-sm" />}
+                            <span className="font-medium">{showPreview ? 'Hide Preview' : 'Show Preview'}</span>
+                          </button>
+                          <button
+                            onClick={() => setCmdOpen(true)}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                            title="Open command palette (Ctrl+K)"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            <span className="font-medium">Commands</span>
+                            <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">⌃K</kbd>
+                          </button>
+                        </div>
+                        {isLastStep ? (
+                          <button
+                            onClick={handleComplete}
+                            disabled={isLoading}
+                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            {isLoading ? 'Saving...' : 'Complete Setup'} {!isLoading && <FiCheckCircle className="text-sm" />}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleContinue}
+                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+                          >
+                            Continue <FiArrowRight className="text-xs" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Desktop action bar */}
-                <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 md:flex md:items-center sm:px-8 md:px-10">
-                  <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600 px-1">Reset</button>
-                      <div className="h-4 w-px bg-slate-200" />
-                      <button
-                        onClick={() => setShowPreview((p: boolean) => !p)}
-                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
-                      >
-                        {showPreview ? <FiEyeOff className="text-sm" /> : <FiEye className="text-sm" />}
-                        <span className="font-medium">{showPreview ? 'Hide Preview' : 'Show Preview'}</span>
-                      </button>
-                    </div>
-                    {isLastStep ? (
-                      <button
-                        onClick={handleComplete}
-                        disabled={isLoading}
-                        className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        {isLoading ? 'Saving...' : 'Complete Setup'} {!isLoading && <FiCheckCircle className="text-sm" />}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleContinue}
-                        className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                      >
-                        Continue <FiArrowRight className="text-xs" />
-                      </button>
-                    )}
+                  {/* ── ATS SCORE tab ────────────────────────────────── */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      opacity:       activeTab === 'ats-score' ? 1 : 0,
+                      transform:     activeTab === 'ats-score' ? 'translateY(0)' : 'translateY(10px)',
+                      pointerEvents: activeTab === 'ats-score' ? 'auto' : 'none',
+                      transition:    'opacity 260ms ease, transform 260ms ease',
+                      zIndex:        activeTab === 'ats-score' ? 10 : 0,
+                    }}
+                  >
+                    {debouncedResumeData
+                      ? <ATSPanel data={debouncedResumeData} />
+                      : (
+                        <div className="flex h-full items-center justify-center">
+                          <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                        </div>
+                      )
+                    }
                   </div>
+
+                  {/* ── SMART ASSIST tab ─────────────────────────────── */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      opacity:        activeTab === 'smart-assist' ? 1 : 0,
+                      transform:      activeTab === 'smart-assist' ? 'translateY(0)' : 'translateY(10px)',
+                      pointerEvents:  activeTab === 'smart-assist' ? 'auto' : 'none',
+                      transition:     'opacity 260ms ease, transform 260ms ease',
+                      zIndex:         activeTab === 'smart-assist' ? 10 : 0,
+                    }}
+                  >
+                    <SmartAssistPanel />
+                  </div>
+
+                  {/* ── OPTIMIZE FOR JOB tab ─────────────────────────── */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      opacity:        activeTab === 'optimize' ? 1 : 0,
+                      transform:      activeTab === 'optimize' ? 'translateY(0)' : 'translateY(10px)',
+                      pointerEvents:  activeTab === 'optimize' ? 'auto' : 'none',
+                      transition:     'opacity 260ms ease, transform 260ms ease',
+                      zIndex:         activeTab === 'optimize' ? 10 : 0,
+                    }}
+                  >
+                    <OptimizeForJobPanel />
+                  </div>
+
                 </div>
               </main>
 
@@ -728,6 +834,15 @@ export function OnboardingLayout({
       {isAuthModalOpen && (
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       )}
+
+      {/* Command palette */}
+      <CommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        onTabChange={setActiveTab}
+        onTogglePreview={() => setShowPreview((p: boolean) => !p)}
+        onExportPdf={() => {}}
+      />
     </section>
   );
 }

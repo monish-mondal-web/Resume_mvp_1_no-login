@@ -386,7 +386,7 @@ export function LanguagesForm() {
 
 // ── Soft Skills ───────────────────────────────────────────────────────────────
 export function SoftSkillsForm() {
-  const { control, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch } = useFormContext<OnboardingFormValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: 'softskills' });
 
   return (
@@ -402,13 +402,23 @@ export function SoftSkillsForm() {
           onMove={move}
           onRemove={remove}
           renderItem={(i) => (
-            <ACA label="Skill name" type="skill" name={`softskills.${i}.skill`} required placeholder="Public Speaking / Teamwork" />
+            <div className="space-y-3">
+              <ACA label="Skill / Domain" type="skill" name={`softskills.${i}.skill`} required placeholder="e.g. Problem Solving, Communication" />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-slate-600">Description <span className="text-xs text-slate-400">(optional)</span></label>
+                <input
+                  {...register(`softskills.${i}.description`)}
+                  placeholder="e.g. Debugged complex UI issues across multiple React projects"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10"
+                />
+              </div>
+            </div>
           )}
         />
       )}
       <AddButton
         label={fields.length === 0 ? 'Add soft skill' : 'Add another soft skill'}
-        onClick={() => append({ id: Date.now().toString(), skill: '', isHidden: false })}
+        onClick={() => append({ id: Date.now().toString(), skill: '', description: '', isHidden: false })}
       />
     </div>
   );

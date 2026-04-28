@@ -23,7 +23,7 @@ export function HomeClient() {
       router.push('/dashboard');
       return;
     }
-    router.push('/onboarding');
+    router.push('/resume/builder');
   };
 
   const handleAuthModalOpen = () => {

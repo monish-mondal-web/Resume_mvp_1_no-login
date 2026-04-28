@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   }
 
   if (!session.user.isProfileCompleted) {
-    redirect('/onboarding');
+    redirect('/resume/builder');
   }
 
   return (

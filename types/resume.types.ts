@@ -129,6 +129,7 @@ export interface ResumeLanguage {
 export interface ResumeSoftSkill {
   id: string;
   skill: string;
+  description?: string;
   isHidden?: boolean;
 }
 
@@ -226,7 +227,10 @@ export type SpacingOption = 'compact' | 'normal' | 'relaxed';
 
 export type FontFamily = 'sans' | 'serif' | 'mono' | 'inter' | 'georgia';
 
-export type PagePadding = 'narrow' | 'normal' | 'wide';
+export type PagePadding  = 'narrow' | 'normal' | 'wide';
+export type LineWeight   = 'thin' | 'normal' | 'thick';
+export type ImageShape   = 'circle' | 'rounded' | 'square';
+export type ImageSize    = 'sm' | 'md' | 'lg';
 
 export interface TemplateOptions {
   accentColor: AccentColor;
@@ -236,6 +240,12 @@ export interface TemplateOptions {
   showPhoto: boolean;
   customAccentColor?: string;
   pagePadding?: PagePadding;
+  linkColor?: string;
+  lineWeight?: LineWeight;
+  headingFont?: FontFamily;
+  showContactIcons?: boolean;
+  imageShape?: ImageShape;
+  imageSize?: ImageSize;
 }
 
 export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
@@ -262,9 +272,9 @@ export const ACCENT_COLORS: Record<AccentColor, { hex: string; label: string; tw
 
 export const FONT_FAMILY_MAP: Record<FontFamily, string> = {
   sans:    'ui-sans-serif, system-ui, sans-serif',
-  serif:   'ui-serif, Georgia, Cambria, serif',
+  serif:   'var(--font-lora), Georgia, serif',
   mono:    'ui-monospace, "Courier New", monospace',
-  inter:   '"Inter", ui-sans-serif, sans-serif',
+  inter:   'var(--font-inter), ui-sans-serif, sans-serif',
   georgia: 'Georgia, "Times New Roman", serif',
 };
 

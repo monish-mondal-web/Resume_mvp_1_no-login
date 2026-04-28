@@ -12,7 +12,7 @@ export default withAuth(
       if (token.isProfileCompleted) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
-      return NextResponse.redirect(new URL('/onboarding', req.url));
+      return NextResponse.redirect(new URL('/resume/builder', req.url));
     }
 
     return NextResponse.next();
@@ -26,7 +26,7 @@ export default withAuth(
         if (
           pathname === '/' ||
           pathname.startsWith('/api/auth') ||
-          pathname === '/onboarding' || // Onboarding is public for building, but protected for saving
+          pathname === '/resume/builder' || // Builder is public for building, but protected for saving
           pathname.startsWith('/_next') ||
           pathname.startsWith('/favicon.ico')
         ) {
@@ -41,5 +41,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/onboarding', '/'],
+  matcher: ['/dashboard/:path*', '/resume/builder', '/'],
 };

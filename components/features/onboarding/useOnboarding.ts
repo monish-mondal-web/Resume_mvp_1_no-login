@@ -11,7 +11,37 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-import type { OnboardingFormValues } from './types';
+import type { OnboardingFormValues, SkillGroupEntry } from './types';
+
+function serializeSkills(skills: SkillGroupEntry[]): string[] {
+  return (skills ?? [])
+    .filter(s => !s.isHidden && (s.items ?? []).length > 0)
+    .map(s => {
+      const items = (s.items ?? []).join(', ');
+      return s.category?.trim() ? `${s.category.trim()}: ${items}` : items;
+    })
+    .filter(Boolean);
+}
+
+// Migrate old string[] skills to SkillGroupEntry[] on load from localStorage
+function migrateSkills(raw: unknown): SkillGroupEntry[] {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  if (typeof raw[0] === 'string') {
+    // Old format: string[] like ["HTML", "React"] or ["Frontend: HTML, CSS"]
+    return (raw as string[]).map((s, i) => {
+      const colon = s.indexOf(': ');
+      if (colon > 0) {
+        return { id: String(i + 1), category: s.slice(0, colon), items: s.slice(colon + 2).split(',').map((x: string) => x.trim()).filter(Boolean) };
+      }
+      return { id: String(i + 1), category: '', items: [s] };
+    });
+  }
+  // Already SkillGroupEntry[] — ensure items is always string[]
+  return (raw as SkillGroupEntry[]).map(s => ({
+    ...s,
+    items: Array.isArray(s.items) ? s.items : typeof s.items === 'string' ? (s.items as string).split(',').map((x: string) => x.trim()).filter(Boolean) : [],
+  }));
+}
 import { BASE_STEPS, MORE_SECTION_DEFS } from './OnboardingConfig';
 import { buildResume } from '@/lib/resume-builder';
 import { useResumeHistory } from '@/hooks/useResumeHistory';
@@ -24,6 +54,7 @@ import {
 } from './defaults';
 
 export const STORAGE_KEY = 'fresh-resume-onboarding-draft';
+const STORAGE_VERSION = 2; // bump when data shape changes to clear stale cache
 
 function safeLocalGet<T>(key: string, def: T): T {
   if (typeof window === 'undefined') return def;
@@ -92,7 +123,12 @@ export function useOnboarding(session: any) {
   } | null>(null);
 
   // ── Template / preview state ──
-  const [previewTemplate, setPreviewTemplate] = useState<TemplateId>('template1');
+  const [previewTemplate, setPreviewTemplate] = useState<TemplateId>(() => {
+    if (typeof window === 'undefined') return 'template1';
+    try {
+      return (localStorage.getItem('resumeTemplateId') as TemplateId) || 'template1';
+    } catch { return 'template1'; }
+  });
   const [templateOptions, setTemplateOptions] = useState<TemplateOptions>(() => {
     if (typeof window === 'undefined') return DEFAULT_TEMPLATE_OPTIONS;
     try {
@@ -118,11 +154,15 @@ export function useOnboarding(session: any) {
       if (saved) {
         try {
           const p = JSON.parse(saved);
+          if ((p.__version ?? 1) < STORAGE_VERSION) {
+            localStorage.removeItem(STORAGE_KEY);
+            throw new Error('stale');
+          }
           return {
             personalInfo: p.personalInfo || buildDefaultPersonalInfo(session),
             experience: p.experience || DEF_EXP,
             education: p.education || DEF_EDU,
-            skills: p.skills || DEF_SKILLS,
+            skills: p.skills ? migrateSkills(p.skills) : DEF_SKILLS,
             projects: p.projects || DEF_PROJ,
             certificates: p.certificates || DEF_CERT,
             coursework: p.coursework || DEF_COURSE,
@@ -234,6 +274,7 @@ export function useOnboarding(session: any) {
       lsDebounceRef.current = setTimeout(() => {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            __version: STORAGE_VERSION,
             activeStep,
             visitedSteps: Array.from(visitedSteps),
             selectedMoreIds,
@@ -259,6 +300,7 @@ export function useOnboarding(session: any) {
       try {
         const current = methods.getValues();
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          __version: STORAGE_VERSION,
           activeStep,
           visitedSteps: Array.from(visitedSteps),
           selectedMoreIds,
@@ -313,7 +355,7 @@ export function useOnboarding(session: any) {
       case 'personal':       return !!(v.personalInfo?.firstName && v.personalInfo?.lastName && v.personalInfo?.email);
       case 'experience':     return (v.experience ?? []).some(e => e.role && e.company && e.start);
       case 'education':      return (v.education ?? []).some(e => e.school && e.degree);
-      case 'skills':         return (v.skills ?? []).length >= 3;
+      case 'skills':         return (v.skills ?? []).filter(s => !s.isHidden && (s.items ?? []).length > 0).length >= 2;
       case 'projects':       return (v.projects ?? []).some(p => p.title && p.description);
       case 'certificates':   return (v.certificates ?? []).some(c => c.name && c.issuer);
       case 'coursework':     return (v.coursework ?? []).some(c => c.course);
@@ -384,7 +426,7 @@ export function useOnboarding(session: any) {
           personalInfo:    v.personalInfo as any,
           experience:      (v.experience      ?? []) as any,
           education:       (v.education       ?? []) as any,
-          skills:          (v.skills          ?? []) as any,
+          skills:          serializeSkills(v.skills ?? []),
           projects:        (v.projects        ?? []) as any,
           certificates:    (v.certificates    ?? []) as any,
           coursework:      (v.coursework      ?? []) as any,
@@ -421,7 +463,7 @@ export function useOnboarding(session: any) {
       personalInfo:    v.personalInfo,
       experience:      v.experience      ?? [],
       education:       v.education       ?? [],
-      skills:          v.skills          ?? [],
+      skills:          serializeSkills(v.skills ?? []),
       projects:        v.projects        ?? [],
       certificates:    v.certificates    ?? [],
       coursework:      v.coursework      ?? [],
@@ -465,7 +507,9 @@ export function useOnboarding(session: any) {
 
   // ── Undo / redo ──
   const applySnapshot = useCallback((snap: OnboardingFormValues) => {
-    methods.reset(snap, { keepDefaultValues: true });
+    // Defer past the current render cycle — useFieldArray's layout effect fires
+    // during reset() and triggers setState on a child while the parent is rendering.
+    setTimeout(() => methods.reset(snap, { keepDefaultValues: true }), 0);
   }, [methods]);
 
   const { canUndo, canRedo, undo, redo } = useResumeHistory(formSnapshot, applySnapshot);
@@ -550,7 +594,7 @@ export function useOnboarding(session: any) {
         onboardingData: {
           experience: values.experience,
           education: values.education,
-          skills: values.skills,
+          skills: serializeSkills(values.skills ?? []),
           projects: values.projects,
           certificates: values.certificates,
           coursework: values.coursework,
@@ -637,6 +681,7 @@ export function useOnboarding(session: any) {
         setStepOrder(['personal', 'experience', 'education', 'skills']);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem('resumeTemplateOptions');
+        localStorage.removeItem('resumeTemplateId');
         setTemplateOptions(DEFAULT_TEMPLATE_OPTIONS);
         setPreviewTemplate('template1');
         setVisitedSteps(new Set(['personal']));
@@ -653,6 +698,11 @@ export function useOnboarding(session: any) {
     setTemplateOptions(next);
     localStorage.setItem('resumeTemplateOptions', JSON.stringify(next));
   }, [templateOptions]);
+
+  const changePreviewTemplate = useCallback((id: TemplateId) => {
+    setPreviewTemplate(id);
+    localStorage.setItem('resumeTemplateId', id);
+  }, []);
 
   return {
     methods,
@@ -672,7 +722,7 @@ export function useOnboarding(session: any) {
     showPreview, setShowPreview,
     confirmModal, setConfirmModal,
     // preview
-    previewTemplate, setPreviewTemplate,
+    previewTemplate, setPreviewTemplate: changePreviewTemplate,
     templateOptions, setTemplateOptions,
     containerWidth,
     debouncedResumeData,

@@ -1,23 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 import { Template1 } from './templates/Template1';
 import { Template2 } from './templates/Template2';
 import { Template3 } from './templates/Template3';
-import { ATSScore } from './ATSScore';
 import { TemplateCustomizer } from './TemplateCustomizer';
 import { MiniTemplate1, MiniTemplate2, MiniTemplate3, TEMPLATES } from './TemplateSelectPopup';
 import { ACCENT_COLORS } from '@/types/resume.types';
-import { computeATSScore } from '@/lib/resume-builder';
-import type { ATSResult } from '@/lib/resume-builder';
-import { 
-  FiLayout, FiSliders, FiActivity, FiRotateCcw, FiRotateCw, 
-  FiPlus, FiMinus, FiDownload, FiChevronDown, FiMaximize, FiX,
-  FiZap, FiMaximize2, FiMinimize2, FiMonitor,
-  FiCornerUpLeft, FiCornerUpRight, FiTarget, FiFileText, FiImage,
-  FiEdit2, FiMaximize as FiMaximizeIcon
+import {
+  FiLayout, FiSliders, FiRotateCcw, FiRotateCw,
+  FiPlus, FiMinus, FiDownload, FiMaximize, FiX,
+  FiMaximize2, FiMinimize2,
+  FiCornerUpLeft, FiCornerUpRight,
+  FiEdit2, FiMaximize as FiMaximizeIcon,
 } from 'react-icons/fi';
 
 // A4 at 96 dpi: 210mm × 297mm → 794 × 1123 px
@@ -33,21 +30,21 @@ function round2(v: number) { return Math.round(v * 100) / 100; }
 // ── SideDrawer (Modern Unified Panel) ────────────────────────────────────────
 function SideDrawer({
   open, label, onClose, children, activeTab, onTabSwitch,
-}: { 
+}: {
   open: boolean; label: string; onClose: () => void; children: React.ReactNode;
-  activeTab: 'tpl' | 'stl' | 'ats';
-  onTabSwitch: (tab: 'tpl' | 'stl' | 'ats') => void;
+  activeTab: 'tpl' | 'stl';
+  onTabSwitch: (tab: 'tpl' | 'stl') => void;
 }) {
   return (
     <div
-      className={`absolute inset-y-0 right-0 z-[120] w-[360px] flex border-l border-slate-200 bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-300 ease-in-out ${
+      className={`absolute inset-y-0 right-0 z-[120] w-[360px] flex border-l border-slate-200 bg-white transition-transform duration-300 ease-in-out ${
         open ? 'translate-x-0' : 'translate-x-full'
       }`}
     >
       {/* Content Area (Left) */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex h-14 items-center border-b border-slate-100 px-5 bg-white">
-          <span className="text-[12px] font-bold tracking-[0.12em] text-slate-800 uppercase leading-none">{label}</span>
+        <div className="flex h-11 items-center border-b border-slate-200 px-5 bg-white">
+          <span className="text-[12px] font-semibold tracking-[0.12em] text-slate-800 uppercase leading-none">{label}</span>
         </div>
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-white">
           {children}
@@ -55,43 +52,70 @@ function SideDrawer({
       </div>
 
       {/* Control Rail (Right) */}
-      <div className="w-[64px] flex-shrink-0 flex flex-col items-center bg-slate-50/80 border-l border-slate-100">
-        {/* Close Button Area - Height matched to Header for perfect line alignment */}
-        <div className="h-14 w-full flex items-center justify-center border-b border-slate-100 bg-white">
-          <button 
-            onClick={onClose} 
-            className="flex h-full w-full items-center justify-center text-slate-400 transition hover:text-slate-600 hover:bg-slate-50 cursor-pointer"
-            title="Close Panel"
-          >
-            <FiX className="text-xl" />
-          </button>
-        </div>
+      <div className="w-[56px] flex-shrink-0 flex flex-col bg-white border-l border-slate-200">
 
-        {/* Tabs Column - Stacked Cells */}
-        <div className="flex flex-col w-full">
-          {[
-            { id: 'tpl', icon: FiLayout,  label: 'Layout' },
-            { id: 'stl', icon: FiSliders, label: 'Style'  },
-            { id: 'ats', icon: FiTarget,  label: 'ATS'    },
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabSwitch(tab.id as any)}
-                className={`group flex flex-col items-center justify-center gap-1.5 w-full h-[72px] border-b border-slate-100 transition-all duration-200 cursor-pointer rounded-none
-                  ${isActive 
-                    ? 'bg-white text-indigo-600 border-l-4 border-l-indigo-600' 
-                    : 'text-slate-400 bg-transparent hover:bg-white/50 hover:text-slate-600'}`}
-              >
-                <tab.icon className={`text-xl transition-transform ${isActive ? 'scale-110' : ''}`} />
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-indigo-600' : 'text-slate-500 group-hover:text-slate-600'}`}>
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Close button — aligned to h-11 header */}
+        <button
+          onClick={onClose}
+          title="Close"
+          className="flex h-11 w-full flex-shrink-0 cursor-pointer items-center justify-center border-b border-slate-200 text-slate-400 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-600 active:opacity-70"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+          </svg>
+        </button>
+
+        {/* Tab buttons */}
+        {([
+          {
+            id: 'tpl',
+            label: 'Layout',
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="7" height="7" rx="1.5"/>
+                <rect x="11" y="2" width="7" height="7" rx="1.5"/>
+                <rect x="2" y="11" width="7" height="7" rx="1.5"/>
+                <rect x="11" y="11" width="7" height="7" rx="1.5"/>
+              </svg>
+            ),
+          },
+          {
+            id: 'stl',
+            label: 'Style',
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <line x1="2" y1="6"  x2="18" y2="6" />
+                <circle cx="7"  cy="6"  r="2.5" fill="white" stroke="currentColor" strokeWidth="1.7"/>
+                <line x1="2" y1="14" x2="18" y2="14"/>
+                <circle cx="13" cy="14" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.7"/>
+              </svg>
+            ),
+          },
+        ] as { id: string; label: string; icon: React.ReactNode }[]).map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabSwitch(tab.id as 'tpl' | 'stl')}
+              className={`group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 border-b border-slate-200 py-4 transition-colors duration-150 ${
+                isActive
+                  ? 'bg-indigo-50 text-indigo-600'
+                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+              }`}
+            >
+              {/* Left accent line for active */}
+              {isActive && (
+                <span className="absolute inset-y-0 left-0 w-[2.5px] rounded-r-full bg-indigo-500" />
+              )}
+              {tab.icon}
+              <span className={`text-[9px] font-semibold uppercase tracking-widest leading-none ${
+                isActive ? 'text-indigo-500' : 'text-slate-400 group-hover:text-slate-500'
+              }`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -144,11 +168,11 @@ export function ResumePreview({
   const containerRef     = useRef<HTMLDivElement>(null);
   const exportRef        = useRef<HTMLDivElement>(null);
   const nameMeasureRef   = useRef<HTMLSpanElement>(null);
+  const zoomAnchorRef    = useRef<{ mx: number, my: number, oldZoom: number, clientX: number, clientY: number } | null>(null);
   const [zoom, setZoom]  = useState(0.65);
   const [contentH, setContentH]       = useState(A4_H);
   const [nameWidth, setNameWidth]     = useState(80);
-  const [activePanel, setActivePanel] = useState<'tpl' | 'stl' | 'ats' | null>(null);
-  const [atsResult, setAtsResult]     = useState<ATSResult | null>(null);
+  const [activePanel, setActivePanel] = useState<'tpl' | 'stl' | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [fileName, setFileName]       = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -173,8 +197,6 @@ export function ResumePreview({
   const scaledW      = A4_W * zoom;
   const pageCount    = Math.max(1, Math.ceil(contentH / A4_H));
 
-  useEffect(() => { setAtsResult(computeATSScore(data)); }, [data]);
-
   // Measure the hidden export container (no CSS transforms) to get the true content height.
   // The old approach watched contentRef which had height driven by contentH — a circular no-op.
   useEffect(() => {
@@ -190,12 +212,14 @@ export function ResumePreview({
 
   const doFit = useCallback((scrollToTop = false) => {
     if (!containerRef.current) return;
-    const w = containerRef.current.clientWidth - 32; // 16px padding each side
+    const w = containerRef.current.clientWidth - 64; // 32px padding each side (md:px-8)
     if (w > 0) {
       setZoom(clamp(round2(w / A4_W), ZOOM_MIN, ZOOM_MAX));
     }
     if (scrollToTop) {
-      containerRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      containerRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    } else {
+      containerRef.current.scrollTo({ left: 0, behavior: 'instant' as ScrollBehavior });
     }
   }, []);
 
@@ -209,8 +233,25 @@ export function ResumePreview({
 
   const manualZoom = useCallback((newZoom: number) => {
     isAutoFit.current = false;
+    if (newZoom !== zoom && containerRef.current) {
+      const el = containerRef.current;
+      const contentEl = el.firstElementChild as HTMLElement;
+      if (contentEl) {
+        const containerRect = el.getBoundingClientRect();
+        const contentRect = contentEl.getBoundingClientRect();
+        const clientX = containerRect.left + containerRect.width / 2;
+        const clientY = containerRect.top + containerRect.height / 2;
+        zoomAnchorRef.current = {
+          mx: clientX - contentRect.left,
+          my: clientY - contentRect.top,
+          oldZoom: zoom,
+          clientX,
+          clientY
+        };
+      }
+    }
     setZoom(newZoom);
-  }, []);
+  }, [zoom]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -219,7 +260,23 @@ export function ResumePreview({
       if (!e.ctrlKey) return;
       e.preventDefault();
       isAutoFit.current = false;
-      setZoom(prev => clamp(round2(prev - e.deltaY * 0.002), ZOOM_MIN, ZOOM_MAX));
+      setZoom(prev => {
+        const newZoom = clamp(round2(prev - e.deltaY * 0.002), ZOOM_MIN, ZOOM_MAX);
+        if (newZoom !== prev) {
+          const contentEl = el.firstElementChild as HTMLElement;
+          if (contentEl) {
+            const contentRect = contentEl.getBoundingClientRect();
+            zoomAnchorRef.current = {
+              mx: e.clientX - contentRect.left,
+              my: e.clientY - contentRect.top,
+              oldZoom: prev,
+              clientX: e.clientX,
+              clientY: e.clientY
+            };
+          }
+        }
+        return newZoom;
+      });
     };
     const onScroll = () => {
       if (!el) return;
@@ -236,17 +293,42 @@ export function ResumePreview({
     };
   }, [zoom, pageCount]);
 
+  // Adjust scroll position after zoom to keep the mouse anchored
+  useLayoutEffect(() => {
+    if (zoomAnchorRef.current && containerRef.current) {
+      const el = containerRef.current;
+      const { mx, my, oldZoom, clientX, clientY } = zoomAnchorRef.current;
+      const ratio = zoom / oldZoom;
+      
+      const newMx = mx * ratio;
+      const newMy = my * ratio;
+      
+      const containerRect = el.getBoundingClientRect();
+      el.scrollLeft = newMx - clientX + containerRect.left;
+      el.scrollTop = newMy - clientY + containerRect.top;
+      
+      zoomAnchorRef.current = null;
+    }
+  }, [zoom]);
+
   const fitZoom = useCallback(() => {
-    isAutoFit.current = true;
-    doFit(true);
-  }, [doFit]);
+    if (!containerRef.current) return;
+    isAutoFit.current = false;
+    const padH = 120; // Vertical padding for top/bottom spacing
+    const padW = 64;
+    const zoomH = (containerRef.current.clientHeight - padH) / A4_H;
+    const zoomW = (containerRef.current.clientWidth - padW) / A4_W;
+    setZoom(clamp(round2(Math.min(zoomH, zoomW)), ZOOM_MIN, ZOOM_MAX));
+    containerRef.current.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, []);
 
   const fitWidth = useCallback(() => {
     if (!containerRef.current) return;
-    isAutoFit.current = false;
-    const pad = 60;
+    isAutoFit.current = true;
+    const pad = 64; // match padding in doFit
     const w = containerRef.current.clientWidth - pad;
     setZoom(clamp(round2(w / A4_W), ZOOM_MIN, ZOOM_MAX));
+    containerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
   }, []);
 
   const goToNextPage = () => {
@@ -298,7 +380,7 @@ export function ResumePreview({
             className="mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="mb-1 text-xl font-bold text-slate-900">Sign in required</h2>
+            <h2 className="mb-1 text-xl font-semibold text-slate-900">Sign in required</h2>
             <p className="mb-6 text-sm text-slate-500">Please sign in to download your resume.</p>
             <div className="flex gap-3">
               <button
@@ -318,21 +400,20 @@ export function ResumePreview({
         </div>
       )}
       
-      {/* ── Floating Shortcut Tabs (Shown only when no panel is open) ───── */}
+      {/* ── Floating Shortcut Tabs (Layout + Style only) ─────────────── */}
       {!activePanel && (
         <div className="absolute right-0 top-1/2 z-[160] -translate-y-1/2 flex flex-col overflow-hidden rounded-l-xl border border-slate-200 bg-white shadow-lg">
           {[
             { id: 'tpl', icon: FiLayout,  label: 'Layout' },
             { id: 'stl', icon: FiSliders, label: 'Style'  },
-            { id: 'ats', icon: FiTarget,  label: 'ATS'    },
           ].map((tab, i) => (
             <button
               key={tab.id}
               onClick={() => setActivePanel(tab.id as any)}
-              className={`group relative flex flex-col items-center justify-center gap-1 w-11 h-[52px] cursor-pointer text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600 ${i < 2 ? 'border-b border-slate-100' : ''}`}
+              className={`group relative flex flex-col items-center justify-center gap-1 w-11 h-[52px] cursor-pointer text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600 ${i < 1 ? 'border-b border-slate-100' : ''}`}
             >
               <tab.icon className="text-[15px]" />
-              <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-500">{tab.label}</span>
+              <span className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 group-hover:text-indigo-500">{tab.label}</span>
               <div className="absolute right-full mr-2 hidden group-hover:block pointer-events-none whitespace-nowrap">
                 <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl">{tab.label}</div>
               </div>
@@ -343,7 +424,7 @@ export function ResumePreview({
 
       {/* ── Main Pane ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
-        <div className="relative z-40 flex h-11 items-center justify-between flex-shrink-0 border-b border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm pr-6 px-3">
+        <div className="relative z-40 flex h-11 items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur-md pr-6 px-3">
           <div className="flex items-center">
             <div className="flex items-center group relative">
               <span ref={nameMeasureRef} className="absolute opacity-0 pointer-events-none text-[11px] font-semibold px-1">
@@ -374,15 +455,15 @@ export function ResumePreview({
           </div>
         </div>
 
-        <div ref={containerRef} className="flex-1 overflow-auto bg-[#e2e5e9] scroll-smooth no-scrollbar">
-          <div className="flex flex-col items-center py-5 pb-24" style={{ minWidth: '100%' }}>
+        <div ref={containerRef} className="flex-1 overflow-auto bg-[#e2e5e9] no-scrollbar">
+          <div className="flex flex-col items-center py-5 pb-24 px-4 md:px-8" style={{ minWidth: 'max-content', width: '100%' }}>
             {Array.from({ length: pageCount }).map((_, pageIdx) => (
               <div key={pageIdx} className="flex flex-col items-center" style={{ width: '100%' }}>
                 {/* Page separator label above page 2+ */}
                 {pageIdx > 0 && (
                   <div className="flex items-center w-full px-4 py-2" style={{ maxWidth: A4_W * zoom + 48 }}>
                     <div className="flex-1 h-px bg-slate-300/60" />
-                    <span className="mx-3 text-[9px] font-bold uppercase tracking-widest text-slate-400/80">
+                    <span className="mx-3 text-[9px] font-semibold uppercase tracking-widest text-slate-400/80">
                       Page {pageIdx + 1}
                     </span>
                     <div className="flex-1 h-px bg-slate-300/60" />
@@ -414,48 +495,62 @@ export function ResumePreview({
 
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-2xl bg-slate-900/90 p-1.5 text-white shadow-2xl backdrop-blur-md ring-1 ring-white/10">
           <div className="flex items-center bg-white/10 rounded-xl p-0.5">
-            <button onClick={() => manualZoom(clamp(round2(zoom - ZOOM_STEP), ZOOM_MIN, ZOOM_MAX))} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiMinus className="text-sm" /></button>
+            <button onClick={() => manualZoom(clamp(round2(zoom - ZOOM_STEP), ZOOM_MIN, ZOOM_MAX))} className="group relative cursor-pointer p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <FiMinus className="text-sm" />
+              <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 hidden group-hover:block pointer-events-none whitespace-nowrap">
+                <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl ring-1 ring-white/10">Zoom Out</div>
+              </div>
+            </button>
             <span className="min-w-[45px] text-center text-[11px] font-medium">{zoomPct}%</span>
-            <button onClick={() => manualZoom(clamp(round2(zoom + ZOOM_STEP), ZOOM_MIN, ZOOM_MAX))} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiPlus className="text-sm" /></button>
+            <button onClick={() => manualZoom(clamp(round2(zoom + ZOOM_STEP), ZOOM_MIN, ZOOM_MAX))} className="group relative cursor-pointer p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <FiPlus className="text-sm" />
+              <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 hidden group-hover:block pointer-events-none whitespace-nowrap">
+                <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl ring-1 ring-white/10">Zoom In</div>
+              </div>
+            </button>
           </div>
           <div className="w-px h-4 bg-white/20 mx-0.5" />
-          <button onClick={fitZoom} className="p-2 hover:bg-white/10 rounded-lg transition-all"><FiMaximizeIcon className="text-sm" /></button>
-          <button onClick={fitWidth} className="p-2 hover:bg-white/10 rounded-lg transition-all"><FiMaximize2 className="text-sm" /></button>
+          <button onClick={fitZoom} className="group relative cursor-pointer p-2 hover:bg-white/10 rounded-lg transition-all">
+            <FiMaximizeIcon className="text-sm" />
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 hidden group-hover:block pointer-events-none whitespace-nowrap">
+              <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl ring-1 ring-white/10">Fit Page</div>
+            </div>
+          </button>
+          <button onClick={fitWidth} className="group relative cursor-pointer p-2 hover:bg-white/10 rounded-lg transition-all">
+            <FiMaximize2 className="text-sm" />
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 hidden group-hover:block pointer-events-none whitespace-nowrap">
+              <div className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-xl ring-1 ring-white/10">Fit Width</div>
+            </div>
+          </button>
         </div>
 
         <div className="absolute bottom-6 right-8 z-50">
-          <button onClick={goToNextPage} className="rounded-full bg-white/90 px-4 py-2 text-[10px] font-bold text-slate-600 shadow-2xl border border-slate-200/60 backdrop-blur-xl transition-all hover:border-indigo-200 hover:text-indigo-600 hover:bg-white active:scale-95 uppercase tracking-widest">
+          <button onClick={goToNextPage} className="cursor-pointer rounded-full bg-white/90 px-4 py-2 text-[10px] font-semibold text-slate-600 shadow-2xl border border-slate-200/60 backdrop-blur-xl transition-all hover:border-indigo-200 hover:text-indigo-600 hover:bg-white active:scale-95 uppercase tracking-widest">
             Page {currentPage} of {pageCount}
           </button>
         </div>
 
         {/* ── Unified Side Drawer (Instant Swapping) ───────────────────────── */}
-        <SideDrawer 
-          open={!!activePanel} 
-          label={
-            activePanel === 'ats' ? 'ATS Analysis' : 
-            activePanel === 'stl' ? 'Theme Settings' : 
-            'Select Layout'
-          } 
+        <SideDrawer
+          open={!!activePanel}
+          label={activePanel === 'stl' ? 'Theme Settings' : 'Select Layout'}
           activeTab={activePanel || 'tpl'}
           onTabSwitch={(tab) => setActivePanel(tab)}
           onClose={() => setActivePanel(null)}
         >
-          {activePanel === 'ats' && atsResult && <ATSScore result={atsResult} />}
-          
           {activePanel === 'stl' && (
             <TemplateCustomizer options={templateOptions} onChange={onOptionsChange} />
           )}
 
           {activePanel === 'tpl' && (
             <div className="space-y-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Available Templates</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Available Templates</p>
               <div className="grid grid-cols-1 gap-4">
                 {TEMPLATES.map(t => {
                   const isActive = templateId === t.id;
                   const hex = ACCENT_COLORS[templateOptions.accentColor]?.hex ?? '#6366f1';
                   return (
-                    <button key={t.id} onClick={() => { onTemplateChange(t.id); }} className={`group relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                    <button key={t.id} onClick={() => { onTemplateChange(t.id); }} className={`cursor-pointer group relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                       <div className={`p-3 transition-colors ${isActive ? 'bg-indigo-50/50' : 'bg-slate-50 group-hover:bg-slate-100/50'}`}>
                         <div className="mx-auto max-w-[140px] shadow-sm ring-1 ring-slate-900/5">
                         {t.id === 'template3' ? <MiniTemplate3 hex={hex} /> : t.id === 'template2' ? <MiniTemplate2 hex={hex} /> : <MiniTemplate1 hex={hex} />}

@@ -22,12 +22,49 @@ function fmtDate(d: string) {
   return `${months[parseInt(m, 10) - 1] ?? m} ${y}`;
 }
 
+function skillLine(s: string, fs: number) {
+  const colon = s.indexOf(': ');
+  if (colon > 0) {
+    return <li style={{ fontSize: fs - 0.5, color: '#1f2937', marginBottom: 2, lineHeight: 1.55 }}>
+      <span style={{ fontWeight: 700 }}>{s.slice(0, colon)}</span>
+      <span style={{ color: '#374151' }}>: {s.slice(colon + 2)}</span>
+    </li>;
+  }
+  return <li style={{ fontSize: fs - 0.5, color: '#1f2937', marginBottom: 2, lineHeight: 1.55 }}>{s}</li>;
+}
+
 function bullets(text: string, fs: number) {
   return text.split('\n').filter(Boolean).map((line, i) => (
     <li key={i} style={{ marginBottom: 1.5, lineHeight: 1.45, fontSize: fs - 0.5 }}>
       {line.replace(/^[-•]\s*/, '')}
     </li>
   ));
+}
+
+const IC3: React.CSSProperties = { display: 'inline-block', verticalAlign: 'middle', marginRight: 3, color: '#6b7280' };
+
+const T3PhoneIcon    = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>;
+const T3EmailIcon    = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>;
+const T3LocationIcon = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>;
+const T3LinkedInIcon = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M19 3a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14zm-9 6H7v10h3V9zm6.5 0c-1.93 0-2.8 1.06-3 1.8V9H10v10h3v-5.5c0-1.38 1.12-2.5 2.5-2.5S18 12.12 18 13.5V19h3v-5.5c0-2.49-2.01-4.5-4.5-4.5zM8.5 7a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>;
+const T3GitHubIcon   = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>;
+const T3TwitterIcon  = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+const T3GlobeIcon    = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>;
+const T3DiscordIcon  = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>;
+const T3FigmaIcon    = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style={IC3}><path d="M15.5 12a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM5 5.5A3.5 3.5 0 018.5 2H12v7H8.5A3.5 3.5 0 015 5.5zM12 2h3.5a3.5 3.5 0 110 7H12V2zM5 12a3.5 3.5 0 013.5-3.5H12v7H8.5A3.5 3.5 0 015 12zm3.5 3.5H12V22H8.5a3.5 3.5 0 110-7z"/></svg>;
+const T3ExtLinkIcon  = () => <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={IC3}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+
+function getLinkIcon3(type: string) {
+  switch (type) {
+    case 'linkedin':  return <T3LinkedInIcon />;
+    case 'github':    return <T3GitHubIcon />;
+    case 'twitter':   return <T3TwitterIcon />;
+    case 'website':   return <T3GlobeIcon />;
+    case 'portfolio': return <T3GlobeIcon />;
+    case 'discord':   return <T3DiscordIcon />;
+    case 'figma':     return <T3FigmaIcon />;
+    default:          return <T3ExtLinkIcon />;
+  }
 }
 
 // Professional Executive template — centered header with accent title, dot contacts, prominent sections
@@ -37,11 +74,16 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
     experience = [], education = [], skills = [], sectionOrder = [], enabledSections = [],
   } = data;
 
-  const accent  = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#0f766e';
-  const font    = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
-  const fs      = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
-  const gap     = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
-  const pad     = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const accent     = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#0f766e';
+  const linkColor  = options.linkColor || accent;
+  const font       = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
+  const fs         = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
+  const gap        = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
+  const pad        = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const lw         = options.lineWeight === 'thin' ? 0.6 : options.lineWeight === 'thick' ? 1.6 : 1;
+  const showIcons  = options.showContactIcons !== false;
+  const imgPx      = options.imageSize === 'sm' ? 56 : options.imageSize === 'lg' ? 88 : 72;
+  const imgRadius  = options.imageShape === 'square' ? 4 : options.imageShape === 'rounded' ? 12 : '50%';
 
   const ring = (id: string): React.CSSProperties =>
     activeSection === id ? { outline: `2px solid ${accent}`, outlineOffset: 2, borderRadius: 3 } : {};
@@ -56,7 +98,7 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
       }}>
         {label}
       </h2>
-      <div style={{ height: 0.75, backgroundColor: '#d1d5db' }} />
+      <div style={{ height: 0.75 * lw, backgroundColor: '#d1d5db' }} />
     </div>
   );
 
@@ -146,7 +188,7 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
                     </span>
                   )}
                 </div>
-                {p.url && <div style={{ fontSize: fs - 1, color: accent, marginTop: 1 }}>{p.url}</div>}
+                {p.url && <div style={{ fontSize: fs - 1, color: linkColor, marginTop: 1 }}>{p.url}</div>}
                 {p.description && (
                   <ul style={{ margin: '3px 0 0', paddingLeft: 14, color: '#374151', listStyleType: 'disc' }}>
                     {bullets(p.description, fs)}
@@ -187,7 +229,9 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
         return (
           <div key="skills" data-section="skills" style={{ marginBottom: gap, ...ring('skills') }} onClick={click('skills')} className="cursor-pointer">
             <SectionHeader label="Technical Skills" />
-            <div style={{ fontSize: fs - 0.5, color: '#1f2937', lineHeight: 1.65 }}>{skills.join(' · ')}</div>
+            <ul style={{ margin: 0, paddingLeft: 14, listStyleType: 'disc' }}>
+              {skills.map((s, i) => React.cloneElement(skillLine(s, fs), { key: i }))}
+            </ul>
           </div>
         );
       }
@@ -197,7 +241,14 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
         return (
           <div key="softskills" data-section="softskills" style={{ marginBottom: gap, ...ring('softskills') }} onClick={click('softskills')} className="cursor-pointer">
             <SectionHeader label="Soft Skills" />
-            <div style={{ fontSize: fs - 0.5, color: '#1f2937' }}>{items.map(s => s.skill).join(' · ')}</div>
+            <ul style={{ margin: 0, paddingLeft: 14, listStyleType: 'disc' }}>
+              {items.map(s => (
+                <li key={s.id} style={{ fontSize: fs - 0.5, color: '#1f2937', marginBottom: 2, lineHeight: 1.55 }}>
+                  <span style={{ fontWeight: 600 }}>{s.skill}</span>
+                  {s.description && <span style={{ color: '#4b5563', fontWeight: 400 }}> – {s.description}</span>}
+                </li>
+              ))}
+            </ul>
           </div>
         );
       }
@@ -207,14 +258,14 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
         return (
           <div key="languages" data-section="languages" style={{ marginBottom: gap, ...ring('languages') }} onClick={click('languages')} className="cursor-pointer">
             <SectionHeader label="Languages" />
-            <div style={{ columns: 2, fontSize: fs - 0.5 }}>
+            <ul style={{ margin: 0, paddingLeft: 14, listStyleType: 'disc' }}>
               {items.map(l => (
-                <div key={l.id} style={{ breakInside: 'avoid', marginBottom: 2 }}>
+                <li key={l.id} style={{ fontSize: fs - 0.5, marginBottom: 2, lineHeight: 1.55 }}>
                   <span style={{ fontWeight: 600 }}>{l.language}</span>
-                  {l.proficiency && <span style={{ color: '#6b7280' }}> [{l.proficiency}]</span>}
-                </div>
+                  {l.proficiency && <span style={{ color: '#6b7280' }}> – {l.proficiency}</span>}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         );
       }
@@ -424,32 +475,40 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
     }
   };
 
-  const contactItems = [
-    personal.phone, personal.email, personal.location,
-    ...personal.links.filter(l => l.url).map(l => l.url),
-  ].filter(Boolean);
+  const contactItems: { icon: React.ReactNode; text: string }[] = [];
+  if (personal.phone)    contactItems.push({ icon: <T3PhoneIcon />,    text: personal.phone });
+  if (personal.email)    contactItems.push({ icon: <T3EmailIcon />,    text: personal.email });
+  if (personal.location) contactItems.push({ icon: <T3LocationIcon />, text: personal.location });
+  for (const lnk of (personal.links ?? []).filter(l => l.url)) {
+    contactItems.push({ icon: getLinkIcon3(lnk.type), text: lnk.url });
+  }
 
   return (
     <div
       id="resume-template3"
-      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.4, position: 'relative' }}
+      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.4 }}
     >
       {/* ── Header: centered with accent title ───────────────────────── */}
       <div
         data-section="personal"
         onClick={click('personal')}
         className="cursor-pointer"
-        style={{ textAlign: 'center', marginBottom: gap * 0.8, position: 'relative', ...ring('personal') }}
+        style={{ textAlign: 'center', marginBottom: gap * 0.8, ...ring('personal') }}
       >
+        {/* Profile photo — centered above name, 1:1 ratio via overflow:hidden */}
         {options.showPhoto && personal.image?.url && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={personal.image.url}
-            alt="Profile"
-            width={60} height={60}
-            style={{ position: 'absolute', top: 0, right: 0, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${accent}50` }}
-            crossOrigin="anonymous"
-          />
+          <div style={{
+            width: imgPx, height: imgPx, borderRadius: imgRadius, overflow: 'hidden',
+            border: `2px solid ${accent}`, marginBottom: 8,
+            marginLeft: 'auto', marginRight: 'auto', flexShrink: 0,
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={personal.image.url}
+              alt="Profile"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
         )}
         <h1 style={{ fontSize: fs + 14, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', lineHeight: 1.05, margin: 0 }}>
           {personal.firstName} {personal.lastName}
@@ -459,13 +518,16 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
             {personal.professionalTitle}
           </p>
         )}
-        {/* Contacts with dot separators */}
+        {/* Contacts: icon + text, dot (●) separators */}
         {contactItems.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', fontSize: fs - 1, color: '#4b5563', marginTop: 6, gap: 4 }}>
             {contactItems.map((item, i) => (
               <React.Fragment key={i}>
                 {i > 0 && <span style={{ color: '#9ca3af', fontSize: fs - 2 }}>●</span>}
-                <span>{item}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {showIcons && item.icon}
+                  {item.text}
+                </span>
               </React.Fragment>
             ))}
           </div>
@@ -473,11 +535,11 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
       </div>
 
       {/* ── Thin decorative rule ──────────────────────────────────────── */}
-      <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, marginBottom: gap }} />
+      <div style={{ height: 2 * lw, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, marginBottom: gap }} />
 
       {/* ── Summary ──────────────────────────────────────────────────── */}
       {personal.summary && (
-        <div data-section="personal" style={{ marginBottom: gap, textAlign: 'center' }}>
+        <div data-section="personal" onClick={click('personal')} className="cursor-pointer" style={{ marginBottom: gap, textAlign: 'center', ...ring('personal') }}>
           <p style={{ fontSize: fs - 0.5, color: '#374151', lineHeight: 1.6, margin: '0 auto', maxWidth: '85%' }}>
             {personal.summary}
           </p>

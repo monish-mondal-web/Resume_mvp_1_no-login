@@ -284,7 +284,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         if (session?.user?.isProfileCompleted) {
           router.push('/dashboard');
         } else {
-          router.push('/onboarding');
+          router.push('/resume/builder');
         }
       }
     } catch {
@@ -394,7 +394,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         if (session?.user?.isProfileCompleted) {
           router.push('/dashboard');
         } else {
-          router.push('/onboarding');
+          router.push('/resume/builder');
         }
       }
     } catch {

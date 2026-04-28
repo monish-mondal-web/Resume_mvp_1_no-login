@@ -95,7 +95,7 @@ function workEntryHtml(
 type SectionStyle = 'classic' | 'modern' | 'executive';
 
 function buildSectionRenderer(
-  data: ResumeData, fs: number, gap: number, accent: string, style: SectionStyle,
+  data: ResumeData, fs: number, gap: number, accent: string, linkColor: string, style: SectionStyle,
   sectionHeaderHtml: (label: string) => string,
 ) {
   const { experience = [], education = [], skills = [], enabledSections = [] } = data;
@@ -140,7 +140,7 @@ function buildSectionRenderer(
               </div>
               ${dr}
             </div>
-            ${p.url ? `<div style="font-size:${fs - 1}px;color:${accent};margin-top:1px">${esc(p.url)}</div>` : ''}
+            ${p.url ? `<div style="font-size:${fs - 1}px;color:${linkColor};margin-top:1px">${esc(p.url)}</div>` : ''}
             ${p.description ? `<ul style="margin:3px 0 0;padding-left:14px;list-style-type:disc">${bulletsHtml(p.description, fs)}</ul>` : ''}
           </div>`;
         }).join('');
@@ -188,20 +188,27 @@ function buildSectionRenderer(
       }
       case 'skills': {
         if (!enabledSections.includes('skills') || !skills.length) return '';
-        return `<div data-section="skills" style="margin-bottom:${gap}px">${sectionHeaderHtml('Technical Skills')}<div style="font-size:${fs - 0.5}px;color:#1f2937;line-height:1.65">${esc(skills.join(' · '))}</div></div>`;
+        const skillItems = skills.map(s => {
+          const colon = s.indexOf(': ');
+          if (colon > 0) {
+            return `<li style="font-size:${fs - 0.5}px;color:#1f2937;margin-bottom:2px;line-height:1.55"><span style="font-weight:700">${esc(s.slice(0, colon))}</span><span style="color:#374151">: ${esc(s.slice(colon + 2))}</span></li>`;
+          }
+          return `<li style="font-size:${fs - 0.5}px;color:#1f2937;margin-bottom:2px;line-height:1.55">${esc(s)}</li>`;
+        }).join('');
+        return `<div data-section="skills" style="margin-bottom:${gap}px">${sectionHeaderHtml('Technical Skills')}<ul style="margin:0;padding-left:14px;list-style-type:disc">${skillItems}</ul></div>`;
       }
       case 'softskills': {
         const items = V(data.softskills);
         if (!enabledSections.includes('softskills') || !items.length) return '';
-        return `<div data-section="softskills" style="margin-bottom:${gap}px">${sectionHeaderHtml('Soft Skills')}<div style="font-size:${fs - 0.5}px;color:#1f2937">${esc(items.map(s => s.skill).join(' · '))}</div></div>`;
+        const softItems = items.map(s =>
+          `<li style="font-size:${fs - 0.5}px;color:#1f2937;margin-bottom:2px;line-height:1.55"><span style="font-weight:700">${esc(s.skill)}</span>${s.description ? `<span style="color:#4b5563;font-weight:400"> – ${esc(s.description)}</span>` : ''}</li>`
+        ).join('');
+        return `<div data-section="softskills" style="margin-bottom:${gap}px">${sectionHeaderHtml('Soft Skills')}<ul style="margin:0;padding-left:14px;list-style-type:disc">${softItems}</ul></div>`;
       }
       case 'languages': {
         const items = V(data.languages);
         if (!enabledSections.includes('languages') || !items.length) return '';
-        return `<div data-section="languages" style="margin-bottom:${gap}px">${sectionHeaderHtml('Languages')}
-          <div style="columns:2;font-size:${fs - 0.5}px">
-            ${items.map(l => `<div style="break-inside:avoid;margin-bottom:2px"><span style="font-weight:600">${esc(l.language)}</span>${l.proficiency ? `<span style="color:#6b7280"> [${esc(l.proficiency)}]</span>` : ''}</div>`).join('')}
-          </div></div>`;
+        return `<div data-section="languages" style="margin-bottom:${gap}px">${sectionHeaderHtml('Languages')}<ul style="margin:0;padding-left:14px;list-style-type:disc">${items.map(l => `<li style="font-size:${fs - 0.5}px;margin-bottom:2px;line-height:1.55"><span style="font-weight:600">${esc(l.language)}</span>${l.proficiency ? `<span style="color:#6b7280"> – ${esc(l.proficiency)}</span>` : ''}</li>`).join('')}</ul></div>`;
       }
       case 'certificates': {
         const items = V(data.certificates);
@@ -317,19 +324,21 @@ function buildSectionRenderer(
 
 function renderTemplate1(data: ResumeData, options: TemplateOptions): string {
   const { personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null }, sectionOrder = [], enabledSections = [] } = data;
-  const accent = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#4f46e5';
-  const font   = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
-  const fs     = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
-  const gap    = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
-  const pad    = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const accent    = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#4f46e5';
+  const linkColor = options.linkColor || accent;
+  const font      = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
+  const fs        = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
+  const gap       = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
+  const pad       = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const lw        = options.lineWeight === 'thin' ? 0.6 : options.lineWeight === 'thick' ? 1.6 : 1;
 
   const sectionHeader = (label: string) =>
     `<div style="display:flex;align-items:center;margin-bottom:5px;margin-top:2px">
       <h2 style="font-size:${fs - 0.5}px;font-weight:700;letter-spacing:0.1em;color:#111827;text-transform:uppercase;white-space:nowrap;margin-right:8px;flex-shrink:0;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
-      <div style="flex:1;height:0.75px;background-color:${accent}"></div>
+      <div style="flex:1;height:${(0.75 * lw).toFixed(2)}px;background-color:${accent}"></div>
     </div>`;
 
-  const renderSection = buildSectionRenderer(data, fs, gap, accent, 'classic', sectionHeader);
+  const renderSection = buildSectionRenderer(data, fs, gap, accent, linkColor, 'classic', sectionHeader);
   const orderedIds = [...sectionOrder.filter(id => id !== 'personal'), ...enabledSections.filter(id => id !== 'personal' && !sectionOrder.includes(id))];
   const contactItems = [personal.phone, personal.email, personal.location, ...(personal.links ?? []).filter(l => l.url).map(l => l.url)].filter(Boolean) as string[];
 
@@ -342,12 +351,12 @@ function renderTemplate1(data: ResumeData, options: TemplateOptions): string {
           ${personal.summary ? `<p style="font-size:${fs - 0.5}px;color:#374151;line-height:1.55;margin:0">${esc(personal.summary)}</p>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:2px">
-          ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="56" height="56" style="border-radius:50%;object-fit:cover;border:2px solid ${accent}50;margin-bottom:6px" crossorigin="anonymous" />` : ''}
+          ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="56" height="56" style="border-radius:50%;object-fit:cover;border:2px solid ${accent}50;margin-bottom:6px" />` : ''}
           ${contactItems.map(item => `<span style="font-size:${fs - 1}px;color:#4b5563;text-align:right">${esc(item)}</span>`).join('')}
         </div>
       </div>
     </div>
-    <div style="height:1.5px;background-color:${accent};margin-bottom:${gap * 0.8}px"></div>
+    <div style="height:${(1.5 * lw).toFixed(2)}px;background-color:${accent};margin-bottom:${gap * 0.8}px"></div>
     ${orderedIds.map(renderSection).join('')}
   </div>`;
 }
@@ -357,19 +366,21 @@ function renderTemplate1(data: ResumeData, options: TemplateOptions): string {
 
 function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
   const { personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null }, sectionOrder = [], enabledSections = [] } = data;
-  const accent = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#1d4ed8';
-  const font   = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
-  const fs     = options.fontSize === 'sm' ? 10 : options.fontSize === 'lg' ? 12 : 11;
-  const gap    = options.spacing === 'compact' ? 8 : options.spacing === 'relaxed' ? 16 : 11;
-  const pad    = options.pagePadding === 'narrow' ? '12px 20px' : options.pagePadding === 'wide' ? '28px 48px' : '20px 36px';
+  const accent    = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#1d4ed8';
+  const linkColor = options.linkColor || accent;
+  const font      = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
+  const fs        = options.fontSize === 'sm' ? 10 : options.fontSize === 'lg' ? 12 : 11;
+  const gap       = options.spacing === 'compact' ? 8 : options.spacing === 'relaxed' ? 16 : 11;
+  const pad       = options.pagePadding === 'narrow' ? '12px 20px' : options.pagePadding === 'wide' ? '28px 48px' : '20px 36px';
+  const lw        = options.lineWeight === 'thin' ? 0.6 : options.lineWeight === 'thick' ? 1.6 : 1;
 
   const sectionHeader = (label: string) =>
     `<div style="margin-bottom:7px;margin-top:2px">
       <h2 style="font-size:${fs}px;font-weight:700;letter-spacing:0.07em;color:#111827;text-transform:uppercase;margin-bottom:3px;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
-      <div style="height:2px;background-color:${accent};border-radius:1px"></div>
+      <div style="height:${(2 * lw).toFixed(2)}px;background-color:${accent};border-radius:1px"></div>
     </div>`;
 
-  const renderSection = buildSectionRenderer(data, fs, gap, accent, 'modern', sectionHeader);
+  const renderSection = buildSectionRenderer(data, fs, gap, accent, linkColor, 'modern', sectionHeader);
   const orderedIds = [...sectionOrder.filter(id => id !== 'personal'), ...enabledSections.filter(id => id !== 'personal' && !sectionOrder.includes(id))];
   const contactItems = [personal.phone, personal.email, personal.location, ...(personal.links ?? []).filter(l => l.url).map(l => l.url)].filter(Boolean) as string[];
 
@@ -380,11 +391,11 @@ function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
 
   return `<div id="resume-template2" style="font-family:${esc(font)};font-size:${fs}px;color:#1a1a1a;background-color:#ffffff;padding:${pad};min-height:100%;line-height:1.45;position:relative">
     <div data-section="personal" style="margin-bottom:${gap + 2}px;text-align:center;position:relative">
-      ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="64" height="64" style="position:absolute;top:0;right:0;border-radius:50%;object-fit:cover;border:2px solid ${accent}40" crossorigin="anonymous" />` : ''}
+      ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="64" height="64" style="position:absolute;top:0;right:0;border-radius:50%;object-fit:cover;border:2px solid ${accent}40" />` : ''}
       <h1 style="font-size:${fs + 12}px;font-weight:700;color:#111827;letter-spacing:-0.01em;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
       ${personal.professionalTitle ? `<p style="font-size:${fs + 1}px;color:#6b7280;font-weight:400;margin:3px 0 0;letter-spacing:0.01em">${esc(personal.professionalTitle)}</p>` : ''}
       ${contactRow}
-      <div style="height:2px;background-color:${accent};margin:8px 0 0;border-radius:1px"></div>
+      <div style="height:${(2 * lw).toFixed(2)}px;background-color:${accent};margin:8px 0 0;border-radius:1px"></div>
     </div>
     ${personal.summary ? `<div data-section="personal" style="margin-bottom:${gap}px">${sectionHeader('Profile')}<p style="font-size:${fs - 0.5}px;color:#374151;line-height:1.6;margin:0">${esc(personal.summary)}</p></div>` : ''}
     ${orderedIds.map(renderSection).join('')}
@@ -396,19 +407,21 @@ function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
 
 function renderTemplate3(data: ResumeData, options: TemplateOptions): string {
   const { personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null }, sectionOrder = [], enabledSections = [] } = data;
-  const accent = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#0f766e';
-  const font   = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
-  const fs     = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
-  const gap    = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
-  const pad    = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const accent    = options.customAccentColor || ACCENT_COLORS[options.accentColor]?.hex || '#0f766e';
+  const linkColor = options.linkColor || accent;
+  const font      = FONT_FAMILY_MAP[options.fontFamily] ?? FONT_FAMILY_MAP.sans;
+  const fs        = options.fontSize === 'sm' ? 9.5 : options.fontSize === 'lg' ? 11.5 : 10.5;
+  const gap       = options.spacing === 'compact' ? 7 : options.spacing === 'relaxed' ? 14 : 10;
+  const pad       = options.pagePadding === 'narrow' ? '10px 16px' : options.pagePadding === 'wide' ? '24px 40px' : '16px 28px';
+  const lw        = options.lineWeight === 'thin' ? 0.6 : options.lineWeight === 'thick' ? 1.6 : 1;
 
   const sectionHeader = (label: string) =>
     `<div style="margin-bottom:6px;margin-top:2px">
       <h2 style="font-size:${fs + 0.5}px;font-weight:700;letter-spacing:0.08em;color:#111827;text-transform:uppercase;line-height:1.2;margin-bottom:3px;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
-      <div style="height:0.75px;background-color:#d1d5db"></div>
+      <div style="height:${(0.75 * lw).toFixed(2)}px;background-color:#d1d5db"></div>
     </div>`;
 
-  const renderSection = buildSectionRenderer(data, fs, gap, accent, 'executive', sectionHeader);
+  const renderSection = buildSectionRenderer(data, fs, gap, accent, linkColor, 'executive', sectionHeader);
   const orderedIds = [...sectionOrder.filter(id => id !== 'personal'), ...enabledSections.filter(id => id !== 'personal' && !sectionOrder.includes(id))];
   const contactItems = [personal.phone, personal.email, personal.location, ...(personal.links ?? []).filter(l => l.url).map(l => l.url)].filter(Boolean) as string[];
 
@@ -419,12 +432,12 @@ function renderTemplate3(data: ResumeData, options: TemplateOptions): string {
 
   return `<div id="resume-template3" style="font-family:${esc(font)};font-size:${fs}px;color:#111827;background-color:#ffffff;padding:${pad};min-height:100%;line-height:1.4;position:relative">
     <div data-section="personal" style="text-align:center;margin-bottom:${gap * 0.8}px;position:relative">
-      ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="60" height="60" style="position:absolute;top:0;right:0;border-radius:50%;object-fit:cover;border:2px solid ${accent}50" crossorigin="anonymous" />` : ''}
+      ${options.showPhoto && personal.image?.url ? `<img src="${esc(personal.image.url)}" width="60" height="60" style="position:absolute;top:0;right:0;border-radius:50%;object-fit:cover;border:2px solid ${accent}50" />` : ''}
       <h1 style="font-size:${fs + 14}px;font-weight:800;color:#111827;letter-spacing:-0.02em;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
       ${personal.professionalTitle ? `<p style="font-size:${fs + 2}px;color:${accent};font-weight:600;margin:4px 0 0;letter-spacing:0.02em">${esc(personal.professionalTitle)}</p>` : ''}
       ${contactRow}
     </div>
-    <div style="height:2px;background:linear-gradient(90deg,transparent,${accent},transparent);margin-bottom:${gap}px"></div>
+    <div style="height:${(2 * lw).toFixed(2)}px;background:linear-gradient(90deg,transparent,${accent},transparent);margin-bottom:${gap}px"></div>
     ${personal.summary ? `<div data-section="personal" style="margin-bottom:${gap}px;text-align:center"><p style="font-size:${fs - 0.5}px;color:#374151;line-height:1.6;margin:0 auto;max-width:85%;orphans:2;widows:2">${esc(personal.summary)}</p></div>` : ''}
     ${orderedIds.map(renderSection).join('')}
   </div>`;

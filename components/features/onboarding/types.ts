@@ -129,6 +129,14 @@ export interface LanguageEntry {
 export interface SoftSkillEntry {
   id: string;
   skill: string;
+  description?: string;
+  isHidden?: boolean;
+}
+
+export interface SkillGroupEntry {
+  id?: string;
+  category?: string;  // e.g. "Frontend" — rendered bold; leave empty for no label
+  items?: string[];   // individual skill tags, e.g. ["HTML", "CSS", "React.js"]
   isHidden?: boolean;
 }
 
@@ -223,7 +231,7 @@ export interface OnboardingFormValues {
   personalInfo: PersonalInfo;
   experience: ExperienceEntry[];
   education: EducationEntry[];
-  skills: string[];
+  skills: SkillGroupEntry[];
   projects: ProjectEntry[];
   certificates: CertEntry[];
   coursework: CourseworkEntry[];

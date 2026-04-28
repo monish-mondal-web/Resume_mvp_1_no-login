@@ -1,7 +1,7 @@
 import type {
   ExperienceEntry, EducationEntry, ProjectEntry, CertEntry, CourseworkEntry,
   InvolvementEntry, AwardEntry, PublicationEntry, ReferenceEntry, AchievementEntry,
-  LanguageEntry, SoftSkillEntry, InternshipEntry, FreelanceEntry, LeadershipEntry,
+  LanguageEntry, SoftSkillEntry, SkillGroupEntry, InternshipEntry, FreelanceEntry, LeadershipEntry,
   VolunteerEntry, InterestEntry, ConferenceEntry, PatentEntry, ExtracurricularEntry,
 } from './types';
 
@@ -16,8 +16,21 @@ export const DEF_EDU: EducationEntry[] = [
   { id: '3', type: 'school', school: 'Kendriya Vidyalaya (KV)', degree: 'Class X (CBSE)', fieldOfStudy: 'General', startYear: '2011', endYear: '2013', gpa: '9.8' },
 ];
 
-export const DEF_SKILLS: string[] = ['Java', 'Spring Boot', 'React', 'Node.js', 'MySQL', 'Redis', 'Docker', 'AWS', 'System Design', 'Kafka'];
-export const SUGG_SKILLS: string[] = ['TypeScript', 'Go', 'PostgreSQL', 'Kubernetes', 'GraphQL', 'Python'];
+export const DEF_SKILLS: SkillGroupEntry[] = [
+  { id: '1', category: 'Backend',        items: ['Java', 'Spring Boot', 'Node.js', 'Express.js', 'Kafka'] },
+  { id: '2', category: 'Frontend',       items: ['React', 'Next.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind CSS'] },
+  { id: '3', category: 'Database',       items: ['MySQL', 'MongoDB', 'Redis', 'PostgreSQL'] },
+  { id: '4', category: 'DevOps & Cloud', items: ['Docker', 'AWS', 'Git', 'GitHub', 'CI/CD'] },
+  { id: '5', category: 'Other',          items: ['System Design', 'REST APIs', 'Microservices'] },
+];
+export const SUGG_SKILLS: SkillGroupEntry[] = [
+  { id: 's1', category: 'Frontend',  items: ['Vue.js', 'Nuxt', 'Tailwind CSS', 'Vite'] },
+  { id: 's2', category: 'Backend',   items: ['Go', 'Python', 'FastAPI', 'Django', 'Flask'] },
+  { id: 's3', category: 'Database',  items: ['PostgreSQL', 'Elasticsearch', 'Firebase'] },
+  { id: 's4', category: 'DevOps',    items: ['Kubernetes', 'Terraform', 'GCP', 'Azure'] },
+  { id: 's5', category: 'Mobile',    items: ['React Native', 'Flutter', 'Expo'] },
+  { id: 's6', category: 'Other',     items: ['GraphQL', 'WebSockets', 'gRPC', 'tRPC'] },
+];
 
 export const DEF_PROJ: ProjectEntry[] = [
   { id: '1', title: 'Smart Expense Tracker', description: 'Built a full-stack expense tracking app with real-time analytics, UPI transaction sync, and AI-powered category suggestions. Deployed on AWS with 1,200+ active users.', url: 'github.com/rahulsharma/expense-tracker', start: '2023-06', end: '', ongoing: true, tech: 'React, Node.js, MongoDB, AWS, Razorpay API' },
@@ -53,15 +66,15 @@ export const DEF_ACHIEVE: AchievementEntry[] = [
 ];
 
 export const DEF_LANG: LanguageEntry[] = [
-  { id: '1', language: 'Hindi', proficiency: 'Native' },
-  { id: '2', language: 'English', proficiency: 'Professional Working' },
-  { id: '3', language: 'Tamil', proficiency: 'Elementary' },
+  { id: '1', language: 'Hindi',   proficiency: 'Native / Bilingual' },
+  { id: '2', language: 'English', proficiency: 'Full Professional' },
+  { id: '3', language: 'Tamil',   proficiency: 'Elementary' },
 ];
 
 export const DEF_SOFT: SoftSkillEntry[] = [
-  { id: '1', skill: 'Problem Solving' },
-  { id: '2', skill: 'Team Collaboration' },
-  { id: '3', skill: 'Mentoring' },
+  { id: '1', skill: 'Problem Solving',     description: 'Debugged complex production issues and delivered reliable solutions under pressure' },
+  { id: '2', skill: 'Team Collaboration',  description: 'Worked closely with cross-functional teams across design, QA, and product' },
+  { id: '3', skill: 'Mentoring',           description: 'Guided junior engineers through code reviews and technical onboarding' },
 ];
 
 export const DEF_INTERN: InternshipEntry[] = [

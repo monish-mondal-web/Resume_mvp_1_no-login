@@ -17,6 +17,8 @@ const OptionsSchema = z.object({
   showPhoto:         z.boolean(),
   customAccentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   pagePadding:       z.enum(['narrow', 'normal', 'wide']).optional(),
+  linkColor:         z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  lineWeight:        z.enum(['thin', 'normal', 'thick']).optional(),
 });
 
 const RequestSchema = z.object({
@@ -44,6 +46,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { data, templateId, options } = parsed.data;
+
+  // blob: URLs are browser-local and can't be resolved by Puppeteer — strip them
+  const personal = (data as Record<string, unknown>).personal as Record<string, unknown> | undefined;
+  if (personal?.image) {
+    const img = personal.image as { url?: string };
+    if (typeof img.url === 'string' && img.url.startsWith('blob:')) {
+      personal.image = null;
+    }
+  }
 
   // ── 3. Render HTML + generate PDF ───────────────────────────────────────────
   try {
@@ -79,8 +90,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const waitUntil = options.fontFamily === 'inter' ? 'networkidle0' : 'domcontentloaded';
       await page.setContent(html, { waitUntil, timeout: 20_000 });
 
-      // Wait for fonts to finish before rendering
+      // Wait for fonts and images to finish loading
       await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() =>
+        Promise.all(
+          Array.from(document.images)
+            .filter(img => !img.complete)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map(img => new Promise<void>(res => { img.onload = img.onerror = () => res(); }))
+        )
+      );
 
       const pdfBuffer = await page.pdf({
         format:              'A4',
