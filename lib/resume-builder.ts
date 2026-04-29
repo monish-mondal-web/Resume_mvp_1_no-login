@@ -121,10 +121,10 @@ export function computeATSScore(data: ResumeData): ATSResult {
       { label: 'Phone number',  passed: !!p.phone                     },
       { label: 'Location',      passed: !!p.location                  },
     ];
-    checks[0].passed ? (s += 5) : tips.push('Add your full name');
-    checks[1].passed ? (s += 5) : tips.push('Add a professional email address');
-    checks[2].passed ? (s += 5) : tips.push('Add a phone number');
-    checks[3].passed ? (s += 5) : tips.push('Add your location (City, State)');
+    if (checks[0].passed) s += 5; else tips.push('Add your full name');
+    if (checks[1].passed) s += 5; else tips.push('Add a professional email address');
+    if (checks[2].passed) s += 5; else tips.push('Add a phone number');
+    if (checks[3].passed) s += 5; else tips.push('Add your location (City, State)');
     totalScore += s;
     categories.push({ id: 'contact', name: 'Contact Info', score: s, maxScore: 20, tips, checks });
   }
@@ -176,7 +176,6 @@ export function computeATSScore(data: ResumeData): ATSResult {
     let s = 0; const tips: string[] = [];
     const visibleEdu = data.education.filter(e => !e.isHidden);
     const hasDegree  = visibleEdu.some(e => e.degree);
-    const hasGpa     = visibleEdu.some(e => (e as any).gpa);
     const checks = [
       { label: 'Education entry',  passed: visibleEdu.length > 0 },
       { label: 'Degree specified', passed: hasDegree             },
@@ -211,10 +210,12 @@ export function computeATSScore(data: ResumeData): ATSResult {
   // ── Projects & Presence (20 pts) ────────────────────────
   {
     let s = 0; const tips: string[] = [];
-    const visibleProj = data.projects.filter(pp => !pp.isHidden);
+    const projEnabled = data.enabledSections.includes('projects');
+    const certsEnabled = data.enabledSections.includes('certificates');
+    const visibleProj = projEnabled ? data.projects.filter(pp => !pp.isHidden) : [];
     const hasLinkedIn = p.links.some(l => l.type === 'linkedin' && l.url);
     const hasGithub   = p.links.some(l => l.type === 'github'   && l.url);
-    const hasCerts    = data.certificates.filter(c => !c.isHidden).length > 0;
+    const hasCerts    = certsEnabled ? data.certificates.filter(c => !c.isHidden).length > 0 : false;
     const checks = [
       { label: '1+ project',        passed: visibleProj.length >= 1 },
       { label: '2+ projects',       passed: visibleProj.length >= 2 },
@@ -232,7 +233,7 @@ export function computeATSScore(data: ResumeData): ATSResult {
 
   const allTips = categories.flatMap(c => c.tips);
   return {
-    score: Math.min(100, totalScore),
+    score: Math.min(90, totalScore),
     tips: allTips.slice(0, 5),
     categories,
   };

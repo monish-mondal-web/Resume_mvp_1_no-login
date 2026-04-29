@@ -93,7 +93,7 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
   const SectionHeader = ({ label }: { label: string }) => (
     <div style={{ marginBottom: 6, marginTop: 2 }}>
       <h2 style={{
-        fontSize: fs + 0.5, fontWeight: 700, letterSpacing: '0.08em', color: '#111827',
+        fontSize: fs + 0.5, fontWeight: 700, color: '#111827',
         textTransform: 'uppercase', lineHeight: 1.2, marginBottom: 3,
       }}>
         {label}
@@ -218,7 +218,7 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
                     {e.startYear}{e.endYear ? ` – ${e.endYear}` : ''}
                   </span>
                 </div>
-                {e.gpa && <div style={{ fontSize: fs - 1, color: '#6b7280', marginTop: 1 }}>CGPA: {e.gpa}</div>}
+                {e.gpa && <div style={{ fontSize: fs - 1, color: '#6b7280', marginTop: 1 }}>{e.gpaType === 'percentage' ? `Percentage: ${e.gpa}%` : `CGPA: ${e.gpa}`}</div>}
               </div>
             ))}
           </div>
@@ -499,22 +499,23 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
         {options.showPhoto && personal.image?.url && (
           <div style={{
             width: imgPx, height: imgPx, borderRadius: imgRadius, overflow: 'hidden',
-            border: `2px solid ${accent}`, marginBottom: 8,
-            marginLeft: 'auto', marginRight: 'auto', flexShrink: 0,
+            border: options.imageBorder !== false ? `2px solid ${accent}` : 'none',
+            marginBottom: 8, marginLeft: 'auto', marginRight: 'auto', flexShrink: 0,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={personal.image.url}
               alt="Profile"
+              loading="eager"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           </div>
         )}
-        <h1 style={{ fontSize: fs + 14, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', lineHeight: 1.05, margin: 0 }}>
+        <h1 style={{ fontSize: fs + 14, fontWeight: 800, color: '#111827', lineHeight: 1.05, margin: 0 }}>
           {personal.firstName} {personal.lastName}
         </h1>
         {personal.professionalTitle && (
-          <p style={{ fontSize: fs + 2, color: accent, fontWeight: 600, margin: '4px 0 0', letterSpacing: '0.02em' }}>
+          <p style={{ fontSize: fs + 2, color: accent, fontWeight: 600, margin: '4px 0 0' }}>
             {personal.professionalTitle}
           </p>
         )}

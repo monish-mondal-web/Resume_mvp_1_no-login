@@ -33,6 +33,7 @@ export interface EducationEntry {
   startYear: string;
   endYear: string;
   gpa: string;
+  gpaType?: 'cgpa' | 'percentage';
   isHidden?: boolean;
 }
 

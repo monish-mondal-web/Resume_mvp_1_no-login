@@ -110,7 +110,7 @@ export function OptimizeForJobPanel() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-200 transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
               <path d="M12 1l2.4 7.6H22l-6.3 4.6 2.4 7.6L12 16.2 5.9 20.8l2.4-7.6L2 8.6h7.6L12 1z"/>
             </svg>
-            Join Waitlist — It's Free
+            Join Waitlist — It&apos;s Free
           </button>
           <p className="mt-3 text-center text-[11px] text-slate-400">
             Be the first to access when we launch. Zero spam.

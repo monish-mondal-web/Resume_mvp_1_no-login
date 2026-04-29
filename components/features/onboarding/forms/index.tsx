@@ -32,7 +32,7 @@ const ConferencesForm   = dynamic(() => import('./SectionForms').then((m) => ({ 
 const PatentsForm       = dynamic(() => import('./SectionForms').then((m) => ({ default: m.PatentsForm })), { loading: () => <Spinner /> });
 const ExtracurricularForm = dynamic(() => import('./SectionForms').then((m) => ({ default: m.ExtracurricularForm })), { loading: () => <Spinner /> });
 
-export const formRegistry: Record<string, ComponentType<any>> = {
+export const formRegistry: Record<string, ComponentType> = {
   personal:        PersonalForm,
   experience:      ExperienceForm,
   education:       EducationForm,

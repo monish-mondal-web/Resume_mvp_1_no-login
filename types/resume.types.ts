@@ -33,6 +33,7 @@ export interface ResumeEducation {
   startYear: string;
   endYear: string;
   gpa: string;
+  gpaType?: 'cgpa' | 'percentage';
   isHidden?: boolean;
 }
 
@@ -246,6 +247,7 @@ export interface TemplateOptions {
   showContactIcons?: boolean;
   imageShape?: ImageShape;
   imageSize?: ImageSize;
+  imageBorder?: boolean;
 }
 
 export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {

@@ -42,8 +42,9 @@ export async function POST(req: NextRequest) {
       },
       { upsert: true }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to update suggestion usage';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   // Invalidate ONLY the specific type's cache to keep other suggestions fast

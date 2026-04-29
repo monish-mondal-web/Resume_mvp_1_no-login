@@ -461,7 +461,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 md:items-center md:p-6">
       <div
-        className="absolute inset-0 bg-slate-950/45 backdrop-blur-md transition-opacity"
+        className="absolute inset-0 bg-slate-950/45 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -470,7 +470,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative my-auto flex w-full max-w-[900px] flex-col overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_32px_96px_rgba(15,23,42,0.22)] max-md:max-h-none md:max-h-[calc(100dvh-4rem)] lg:flex-row lg:max-h-[660px]"
+        className="relative my-auto flex w-full max-w-[900px] flex-col overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_32px_96px_rgba(15,23,42,0.22)] max-md:max-h-none md:max-h-[calc(100dvh-4rem)] lg:flex-row lg:max-h-[660px] lg:min-h-[600px]"
       >
         <button
           type="button"

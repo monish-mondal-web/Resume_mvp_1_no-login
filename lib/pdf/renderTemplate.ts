@@ -218,27 +218,31 @@ function buildSectionRenderer(
         if (!enabledSections.includes('education') || !items.length) return '';
         const entries = items.map(e => {
           if (style === 't1') {
-            // Template1: degree + italic school inline, date right
+            // Template1: [Degree | GPA right] / [School italic | Years right]  — matches Template1.tsx
+            const gpaLabel = e.gpa ? (e.gpaType === 'percentage' ? `Percentage: ${esc(e.gpa)}%` : `CGPA: ${esc(e.gpa)}`) : '';
             return `<div style="margin-bottom:${gap * 0.6}px;${ENTRY}">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px">
-                <span style="font-size:${fs}px;color:#111827">
-                  <span style="font-weight:700">${esc(e.degree)}${e.fieldOfStudy ? ` in ${esc(e.fieldOfStudy)}` : ''}</span>
-                  ${e.school ? `<span style="font-style:italic;color:#374151;margin-left:6px">${esc(e.school)}</span>` : ''}
-                </span>
+                <span style="font-size:${fs}px;font-weight:700;color:#111827">${esc(e.degree)}${e.fieldOfStudy ? ` in ${esc(e.fieldOfStudy)}` : ''}</span>
+                ${gpaLabel ? `<span style="font-size:${fs - 1.5}px;color:#4b5563;font-style:italic;flex-shrink:0">${gpaLabel}</span>` : ''}
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px">
+                <span style="font-size:${fs - 0.5}px;font-style:italic;color:#374151">${esc(e.school)}</span>
                 <span style="font-size:${fs - 1.5}px;color:#4b5563;font-style:italic;flex-shrink:0">${esc(e.startYear)}${e.endYear ? ` – ${esc(e.endYear)}` : ''}</span>
               </div>
-              ${e.gpa ? `<div style="font-size:${fs - 1}px;color:#6b7280;margin-top:1px">CGPA: ${esc(e.gpa)}</div>` : ''}
             </div>`;
           }
           if (style === 't2') {
-            // Template2: • degree   date / school
+            // Template2: [• Degree | Years right] / [School italic | GPA right]  — matches Template2.tsx
+            const gpaLabel = e.gpa ? (e.gpaType === 'percentage' ? `Percentage: ${esc(e.gpa)}%` : `CGPA: ${esc(e.gpa)}`) : '';
             return `<div style="margin-bottom:${gap * 0.6}px;${ENTRY}">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px">
                 <span style="font-size:${fs}px;font-weight:700;color:#111827">• ${esc(e.degree)}${e.fieldOfStudy ? ` in ${esc(e.fieldOfStudy)}` : ''}</span>
                 <span style="font-size:${fs - 1}px;color:#6b7280;flex-shrink:0">${esc(e.startYear)}${e.endYear ? ` – ${esc(e.endYear)}` : ''}</span>
               </div>
-              ${e.school ? `<div style="font-size:${fs - 0.5}px;color:#374151">${esc(e.school)}</div>` : ''}
-              ${e.gpa ? `<div style="font-size:${fs - 1}px;color:#6b7280">CGPA: ${esc(e.gpa)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;padding-left:10px">
+                <span style="font-size:${fs - 0.5}px;font-style:italic;color:#374151">${esc(e.school)}</span>
+                ${gpaLabel ? `<span style="font-size:${fs - 1}px;color:#6b7280;flex-shrink:0">${gpaLabel}</span>` : ''}
+              </div>
             </div>`;
           }
           // t3: degree + accent school inline, date right
@@ -250,7 +254,7 @@ function buildSectionRenderer(
               </div>
               <span style="font-size:${fs - 1}px;color:#6b7280;flex-shrink:0">${esc(e.startYear)}${e.endYear ? ` – ${esc(e.endYear)}` : ''}</span>
             </div>
-            ${e.gpa ? `<div style="font-size:${fs - 1}px;color:#6b7280;margin-top:1px">CGPA: ${esc(e.gpa)}</div>` : ''}
+            ${e.gpa ? `<div style="font-size:${fs - 1}px;color:#6b7280;margin-top:1px">${e.gpaType === 'percentage' ? `Percentage: ${esc(e.gpa)}%` : `CGPA: ${esc(e.gpa)}`}</div>` : ''}
           </div>`;
         }).join('');
         return `<div data-section="education" style="margin-bottom:${gap}px">${sectionHeaderHtml('Education')}${entries}</div>`;
@@ -372,7 +376,7 @@ function renderTemplate1(data: ResumeData, options: TemplateOptions): string {
   // LABEL ──── rule (label left, accent line extends right)
   const sectionHeader = (label: string) =>
     `<div style="display:flex;align-items:center;margin-bottom:5px;margin-top:2px">
-      <h2 style="font-size:${fs - 1}px;font-weight:700;letter-spacing:0.1em;color:#111827;text-transform:uppercase;white-space:nowrap;margin-right:8px;flex-shrink:0;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
+      <h2 style="font-size:${fs - 1}px;font-weight:700;color:#111827;text-transform:uppercase;white-space:nowrap;margin-right:8px;flex-shrink:0;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
       <div style="flex:1;height:${(0.75 * lw).toFixed(2)}px;background-color:${accent}"></div>
     </div>`;
 
@@ -393,19 +397,20 @@ function renderTemplate1(data: ResumeData, options: TemplateOptions): string {
        </div>`
     : '';
 
+  const photoBorder1 = options.imageBorder !== false ? `2px solid ${accent}` : 'none';
   const photoHtml = options.showPhoto && personal.image?.url
-    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:2px solid ${accent};margin:0 auto 6px;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
+    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:${photoBorder1};margin:0 auto 6px;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
     : '';
 
   return `<div id="resume-template1" style="font-family:${esc(font)};font-size:${fs}px;color:#111827;background-color:#ffffff;padding:${pad};min-height:100%;line-height:1.4">
     <div data-section="personal" style="text-align:center;margin-bottom:${gap * 0.5}px">
       ${photoHtml}
-      <h1 style="font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
+      <h1 style="font-size:24px;font-weight:800;color:#0f172a;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
       ${personal.professionalTitle ? `<div style="font-size:${fs}px;color:#4b5563;font-style:italic;margin-top:2px">${esc(personal.professionalTitle)}</div>` : ''}
       ${contactRowHtml}
     </div>
     <div style="height:${(1.5 * lw).toFixed(2)}px;background-color:${accent};margin-bottom:${gap * 0.8}px"></div>
-    ${personal.summary ? `<div data-section="personal" style="margin-bottom:${gap}px;text-align:center"><p style="font-size:${fs - 0.5}px;color:#374151;line-height:1.6;margin:0 auto;max-width:85%">${esc(personal.summary)}</p></div>` : ''}
+    ${personal.summary ? `<div data-section="personal" style="margin-bottom:${gap}px">${sectionHeader('Profile')}<p style="font-size:${fs - 0.5}px;color:#374151;line-height:1.6;margin:0;text-align:justify">${esc(personal.summary)}</p></div>` : ''}
     ${orderedIds.map(renderSection).join('')}
   </div>`;
 }
@@ -429,7 +434,7 @@ function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
   // CAPS label + full-width accent rule below
   const sectionHeader = (label: string) =>
     `<div style="margin-bottom:7px;margin-top:2px">
-      <h2 style="font-size:${fs}px;font-weight:700;letter-spacing:0.15em;color:#111827;text-transform:uppercase;margin-bottom:3px;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
+      <h2 style="font-size:${fs}px;font-weight:700;color:#111827;text-transform:uppercase;margin-bottom:3px;line-height:1.2;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
       <div style="height:${(0.75 * lw).toFixed(2)}px;background-color:${accent};margin-bottom:5px"></div>
     </div>`;
 
@@ -440,8 +445,9 @@ function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
   const firstEdu = V(education)[0];
   const links = (personal.links ?? []).filter(l => l.url);
 
+  const photoBorder2 = options.imageBorder !== false ? `1.5px solid #e5e7eb` : 'none';
   const photoHtml = options.showPhoto && personal.image?.url
-    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:1.5px solid #e5e7eb;flex-shrink:0;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
+    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:${photoBorder2};flex-shrink:0;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
     : '';
 
   const rightContacts = [
@@ -456,7 +462,7 @@ function renderTemplate2(data: ResumeData, options: TemplateOptions): string {
       <div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0">
         ${photoHtml}
         <div style="min-width:0">
-          <h1 style="font-size:18px;font-weight:700;color:#111827;letter-spacing:-0.01em;line-height:1.1;margin:0 0 2px">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
+          <h1 style="font-size:18px;font-weight:700;color:#111827;line-height:1.1;margin:0 0 2px">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
           ${firstEdu
             ? `<div style="font-size:9px;font-style:italic;color:#374151;margin-bottom:1px">${esc(firstEdu.degree)}${firstEdu.fieldOfStudy ? ` in ${esc(firstEdu.fieldOfStudy)}` : ''}</div>
                <div style="font-size:8.5px;color:#6b7280">${esc(firstEdu.school)}</div>
@@ -495,7 +501,7 @@ function renderTemplate3(data: ResumeData, options: TemplateOptions): string {
   // UPPERCASE + thin gray rule
   const sectionHeader = (label: string) =>
     `<div style="margin-bottom:6px;margin-top:2px">
-      <h2 style="font-size:${fs + 0.5}px;font-weight:700;letter-spacing:0.08em;color:#111827;text-transform:uppercase;line-height:1.2;margin-bottom:3px;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
+      <h2 style="font-size:${fs + 0.5}px;font-weight:700;color:#111827;text-transform:uppercase;line-height:1.2;margin-bottom:3px;break-after:avoid;page-break-after:avoid">${esc(label)}</h2>
       <div style="height:${(0.75 * lw).toFixed(2)}px;background-color:#d1d5db"></div>
     </div>`;
 
@@ -516,15 +522,16 @@ function renderTemplate3(data: ResumeData, options: TemplateOptions): string {
        </div>`
     : '';
 
+  const photoBorder3 = options.imageBorder !== false ? `2px solid ${accent}` : 'none';
   const photoHtml = options.showPhoto && personal.image?.url
-    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:2px solid ${accent};margin:0 auto 8px;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
+    ? `<div style="width:${imgPx}px;height:${imgPx}px;border-radius:${imgR};overflow:hidden;border:${photoBorder3};margin:0 auto 8px;"><img src="${esc(personal.image.url)}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
     : '';
 
   return `<div id="resume-template3" style="font-family:${esc(font)};font-size:${fs}px;color:#111827;background-color:#ffffff;padding:${pad};min-height:100%;line-height:1.4">
     <div data-section="personal" style="text-align:center;margin-bottom:${gap * 0.8}px">
       ${photoHtml}
-      <h1 style="font-size:${fs + 14}px;font-weight:800;color:#111827;letter-spacing:-0.02em;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
-      ${personal.professionalTitle ? `<p style="font-size:${fs + 2}px;color:${accent};font-weight:600;margin:4px 0 0;letter-spacing:0.02em">${esc(personal.professionalTitle)}</p>` : ''}
+      <h1 style="font-size:${fs + 14}px;font-weight:800;color:#111827;line-height:1.05;margin:0">${esc(personal.firstName)} ${esc(personal.lastName)}</h1>
+      ${personal.professionalTitle ? `<p style="font-size:${fs + 2}px;color:${accent};font-weight:600;margin:4px 0 0">${esc(personal.professionalTitle)}</p>` : ''}
       ${contactRowHtml}
     </div>
     <div style="height:${(2 * lw).toFixed(2)}px;background:linear-gradient(90deg,transparent,${accent},transparent);margin-bottom:${gap}px"></div>

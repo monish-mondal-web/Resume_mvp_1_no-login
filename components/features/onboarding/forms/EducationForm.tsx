@@ -31,9 +31,9 @@ export function EducationForm() {
             const isSchool = watch(`education.${i}.type`) === 'school';
             return (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 mb-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-2">
                   <span className="text-xs font-medium text-slate-500">Degree type:</span>
-                  <div className="relative flex rounded-lg bg-slate-100 p-0.5 w-48">
+                  <div className="relative flex rounded-lg bg-slate-100 p-0.5 w-48 flex-shrink-0">
                     <div
                       className={`absolute bottom-0.5 top-0.5 w-[calc(50%-2px)] rounded-md bg-white shadow-sm transition-all duration-300 ease-out ${
                         isSchool ? 'left-[calc(50%+1px)]' : 'left-0.5'
@@ -41,7 +41,10 @@ export function EducationForm() {
                     />
                     <button
                       type="button"
-                      onClick={() => setValue(`education.${i}.type`, 'college', { shouldDirty: true })}
+                      onClick={() => {
+                        setValue(`education.${i}.type`, 'college', { shouldDirty: true });
+                        setValue(`education.${i}.gpaType`, 'cgpa', { shouldDirty: true });
+                      }}
                       className={`relative z-10 flex w-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-semibold transition-colors duration-300 ${
                         !isSchool ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'
                       }`}
@@ -50,7 +53,10 @@ export function EducationForm() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setValue(`education.${i}.type`, 'school', { shouldDirty: true })}
+                      onClick={() => {
+                        setValue(`education.${i}.type`, 'school', { shouldDirty: true });
+                        setValue(`education.${i}.gpaType`, 'percentage', { shouldDirty: true });
+                      }}
                       className={`relative z-10 flex w-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-semibold transition-colors duration-300 ${
                         isSchool ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'
                       }`}
@@ -61,7 +67,7 @@ export function EducationForm() {
                 </div>
 
                 <ACA
-                  label={isSchool ? 'School / Board name' : 'School'}
+                  label={isSchool ? 'School / Board name' : 'University / College'}
                   type="institute"
                   name={`education.${i}.school`}
                   required
@@ -81,20 +87,37 @@ export function EducationForm() {
                     placeholder={isSchool ? 'Science / Commerce' : 'Computer Science'}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                   <CF label="Start year" {...register(`education.${i}.startYear`)} placeholder="2015" />
                   <CF label="End year" {...register(`education.${i}.endYear`)} placeholder="2019" />
-                  <div className="flex flex-col gap-1.5">
+                  <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1">
                     <label className="text-sm text-slate-600">
-                      {isSchool ? 'Percentage / CGPA' : 'GPA'}{' '}
-                      <span className="text-[10px] text-indigo-400">Optional</span>
+                      Grade <span className="text-[10px] text-indigo-400">Optional</span>
                     </label>
-                    <input
-                      type="text"
-                      {...register(`education.${i}.gpa`)}
-                      placeholder={isSchool ? '95% / 9.8' : '3.8'}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10"
-                    />
+                    <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/10">
+                      <input
+                        type="text"
+                        {...register(`education.${i}.gpa`)}
+                        placeholder={(watch(`education.${i}.gpaType`) ?? (isSchool ? 'percentage' : 'cgpa')) === 'percentage' ? '85' : '8.5'}
+                        className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-300"
+                      />
+                      <div className="flex flex-shrink-0 border-l border-slate-200">
+                        {(['cgpa', 'percentage'] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setValue(`education.${i}.gpaType`, t, { shouldDirty: true })}
+                            className={`cursor-pointer px-2 text-[10px] font-semibold transition-colors ${
+                              (watch(`education.${i}.gpaType`) ?? (isSchool ? 'percentage' : 'cgpa')) === t
+                                ? 'bg-indigo-50 text-indigo-600'
+                                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                            }`}
+                          >
+                            {t === 'cgpa' ? 'CGPA' : '%'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -114,6 +137,7 @@ export function EducationForm() {
             startYear: '',
             endYear: '',
             gpa: '',
+            gpaType: 'cgpa',
             isHidden: false,
           })
         }

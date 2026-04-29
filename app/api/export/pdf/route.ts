@@ -23,6 +23,7 @@ const OptionsSchema = z.object({
   showContactIcons:  z.boolean().optional(),
   imageShape:        z.enum(['circle', 'rounded', 'square']).optional(),
   imageSize:         z.enum(['sm', 'md', 'lg']).optional(),
+  imageBorder:       z.boolean().optional(),
 });
 
 const RequestSchema = z.object({

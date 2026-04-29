@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { CF, ACA, TA } from './FormFields';
+import { CF, ACA, TA, AiSuggestionsButton } from './FormFields';
+
 import { SortableList } from './SortableList';
+import { SuggestionsModal } from './SuggestionsModal';
+import { getSectionSuggestions } from '@/lib/section-suggestions';
 import { EmptyState, AddButton } from './ExperienceForm';
 import type { OnboardingFormValues } from '../types';
 
+type SuggestionTextField =
+  | `projects.${number}.description`
+  | `involvement.${number}.description`
+  | `internships.${number}.description`
+  | `freelance.${number}.description`
+  | `leadership.${number}.description`
+  | `volunteering.${number}.description`
+  | `extracurricular.${number}.description`;
+
 // ── Projects ────────────────────────────────────────────────────────────────
 export function ProjectsForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n${text}` : `${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'projects' });
 
   return (
@@ -35,7 +56,7 @@ export function ProjectsForm() {
                   <input type="checkbox" {...register(`projects.${i}.ongoing`)} className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-indigo-600" />
                   <span className="text-sm text-slate-600">Ongoing project</span>
                 </label>
-                <TA label="Description" {...register(`projects.${i}.description`)} rows={3} placeholder="What did you build? What problem did it solve? What was the impact?" />
+                <TA label="Description" {...register(`projects.${i}.description`)} rows={3} placeholder="What did you build? What problem did it solve? What was the impact?" action={<AiSuggestionsButton onClick={() => setSuggestionField(`projects.${i}.description`)} />} />
                 <CF label="Project URL" {...register(`projects.${i}.url`)} placeholder="github.com/you/project" />
                 <CF label="Technologies used" {...register(`projects.${i}.tech`)} placeholder="React, TypeScript, Node.js" hint="Comma-separated list of tools and technologies." />
               </div>
@@ -46,6 +67,18 @@ export function ProjectsForm() {
       <AddButton
         label={fields.length === 0 ? 'Add project' : 'Add another project'}
         onClick={() => append({ id: Date.now().toString(), title: '', description: '', url: '', start: '', end: '', ongoing: false, tech: '', isHidden: false })}
+      />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Project Suggestions"
+        subtitle="Find ATS-friendly bullet points for your projects"
+        searchLabel="Search by Project Type"
+        searchPlaceholder="e.g. Web Development"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('projects', q)}
       />
     </div>
   );
@@ -138,7 +171,16 @@ export function CourseworkForm() {
 
 // ── Involvement ───────────────────────────────────────────────────────────────
 export function InvolvementForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'involvement' });
 
   return (
@@ -174,7 +216,7 @@ export function InvolvementForm() {
                     </label>
                   </div>
                 </div>
-                <TA label="Description" {...register(`involvement.${i}.description`)} rows={3} placeholder="Describe your contributions and impact." />
+                <TA label="Description" {...register(`involvement.${i}.description`)} rows={3} placeholder="Describe your contributions and impact." action={<AiSuggestionsButton onClick={() => setSuggestionField(`involvement.${i}.description`)} />} />
               </div>
             );
           }}
@@ -183,6 +225,18 @@ export function InvolvementForm() {
       <AddButton
         label={fields.length === 0 ? 'Add activity' : 'Add another activity'}
         onClick={() => append({ id: Date.now().toString(), organization: '', role: '', start: '', end: '', current: false, description: '', isHidden: false })}
+      />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Involvement Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Activity"
+        searchPlaceholder="e.g. Leadership"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('involvement', q)}
       />
     </div>
   );
@@ -426,7 +480,16 @@ export function SoftSkillsForm() {
 
 // ── Internships ───────────────────────────────────────────────────────────────
 export function InternshipsForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'internships' });
 
   return (
@@ -463,7 +526,7 @@ export function InternshipsForm() {
                   <input type="checkbox" {...register(`internships.${i}.currentlyWorking`)} className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-indigo-600" />
                   <span className="text-sm text-slate-600">Currently active</span>
                 </label>
-                <TA label="Description" {...register(`internships.${i}.description`)} rows={3} placeholder="What did you learn and achieve?" />
+                <TA label="Description" {...register(`internships.${i}.description`)} rows={3} placeholder="What did you learn and achieve?" action={<AiSuggestionsButton onClick={() => setSuggestionField(`internships.${i}.description`)} />} />
               </div>
             );
           }}
@@ -473,13 +536,34 @@ export function InternshipsForm() {
         label={fields.length === 0 ? 'Add internship' : 'Add another internship'}
         onClick={() => append({ id: Date.now().toString(), role: '', company: '', start: '', end: '', location: '', currentlyWorking: false, description: '', isHidden: false })}
       />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Internship Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Role"
+        searchPlaceholder="e.g. Designer"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('internships', q)}
+      />
     </div>
   );
 }
 
 // ── Freelance Work ────────────────────────────────────────────────────────────
 export function FreelanceForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'freelance' });
 
   return (
@@ -515,7 +599,7 @@ export function FreelanceForm() {
                   <input type="checkbox" {...register(`freelance.${i}.currentlyWorking`)} className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-indigo-600" />
                   <span className="text-sm text-slate-600">Currently active</span>
                 </label>
-                <TA label="Description" {...register(`freelance.${i}.description`)} rows={3} placeholder="Scope of work and results." />
+                <TA label="Description" {...register(`freelance.${i}.description`)} rows={3} placeholder="Scope of work and results." action={<AiSuggestionsButton onClick={() => setSuggestionField(`freelance.${i}.description`)} />} />
               </div>
             );
           }}
@@ -525,13 +609,34 @@ export function FreelanceForm() {
         label={fields.length === 0 ? 'Add freelance role' : 'Add another freelance role'}
         onClick={() => append({ id: Date.now().toString(), role: '', client: '', start: '', end: '', currentlyWorking: false, description: '', isHidden: false })}
       />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Freelance Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Role"
+        searchPlaceholder="e.g. Developer"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('freelance', q)}
+      />
     </div>
   );
 }
 
 // ── Leadership ────────────────────────────────────────────────────────────────
 export function LeadershipForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'leadership' });
 
   return (
@@ -567,7 +672,7 @@ export function LeadershipForm() {
                   <input type="checkbox" {...register(`leadership.${i}.current`)} className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-indigo-600" />
                   <span className="text-sm text-slate-600">Currently active</span>
                 </label>
-                <TA label="Description" {...register(`leadership.${i}.description`)} rows={3} placeholder="Leadership impact and responsibilities." />
+                <TA label="Description" {...register(`leadership.${i}.description`)} rows={3} placeholder="Leadership impact and responsibilities." action={<AiSuggestionsButton onClick={() => setSuggestionField(`leadership.${i}.description`)} />} />
               </div>
             );
           }}
@@ -577,13 +682,34 @@ export function LeadershipForm() {
         label={fields.length === 0 ? 'Add leadership role' : 'Add another leadership role'}
         onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', current: false, description: '', isHidden: false })}
       />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Leadership Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Role"
+        searchPlaceholder="e.g. Management"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('leadership', q)}
+      />
     </div>
   );
 }
 
 // ── Volunteering ──────────────────────────────────────────────────────────────
 export function VolunteeringForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'volunteering' });
 
   return (
@@ -619,7 +745,7 @@ export function VolunteeringForm() {
                   <input type="checkbox" {...register(`volunteering.${i}.current`)} className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-indigo-600" />
                   <span className="text-sm text-slate-600">Currently active</span>
                 </label>
-                <TA label="Description" {...register(`volunteering.${i}.description`)} rows={3} placeholder="What you did and the value you provided." />
+                <TA label="Description" {...register(`volunteering.${i}.description`)} rows={3} placeholder="What you did and the value you provided." action={<AiSuggestionsButton onClick={() => setSuggestionField(`volunteering.${i}.description`)} />} />
               </div>
             );
           }}
@@ -628,6 +754,18 @@ export function VolunteeringForm() {
       <AddButton
         label={fields.length === 0 ? 'Add volunteer role' : 'Add another volunteer role'}
         onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', current: false, description: '', isHidden: false })}
+      />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Volunteering Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Activity"
+        searchPlaceholder="e.g. Mentoring"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('volunteering', q)}
       />
     </div>
   );
@@ -740,7 +878,16 @@ export function PatentsForm() {
 
 // ── Extracurricular ───────────────────────────────────────────────────────────
 export function ExtracurricularForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<SuggestionTextField | null>(null);
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n• ${text}` : `• ${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
   const { fields, append, remove, move } = useFieldArray({ control, name: 'extracurricular' });
 
   return (
@@ -765,7 +912,7 @@ export function ExtracurricularForm() {
                 <CF label="Start" {...register(`extracurricular.${i}.start`)} placeholder="YYYY-MM" />
                 <CF label="End" {...register(`extracurricular.${i}.end`)} placeholder="YYYY-MM" />
               </div>
-              <TA label="Description" {...register(`extracurricular.${i}.description`)} rows={3} placeholder="Describe your participation." />
+              <TA label="Description" {...register(`extracurricular.${i}.description`)} rows={3} placeholder="Describe your participation." action={<AiSuggestionsButton onClick={() => setSuggestionField(`extracurricular.${i}.description`)} />} />
             </div>
           )}
         />
@@ -773,6 +920,18 @@ export function ExtracurricularForm() {
       <AddButton
         label={fields.length === 0 ? 'Add activity' : 'Add another activity'}
         onClick={() => append({ id: Date.now().toString(), activity: '', organization: '', start: '', end: '', description: '', isHidden: false })}
+      />
+    
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Activity Suggestions"
+        subtitle="Find ATS-friendly bullet points"
+        searchLabel="Search by Activity"
+        searchPlaceholder="e.g. Sports"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('extracurricular', q)}
       />
     </div>
   );

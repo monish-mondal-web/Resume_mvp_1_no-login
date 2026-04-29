@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   DndContext, DragOverlay, closestCenter,
 } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 import { BuilderTabBar, type BuilderTab } from './BuilderTabBar';
-import { SmartAssistPanel } from './SmartAssistPanel';
 import { OptimizeForJobPanel } from './OptimizeForJobPanel';
 import { ATSPanel } from './ATSPanel';
+import { ResumeImportCard } from '../forms/ResumeImportCard';
 import { CommandPalette } from './CommandPalette';
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
@@ -26,6 +29,7 @@ import {
 import { MORE_SECTION_DEFS } from '../OnboardingConfig';
 import type { StepConfig } from '../types';
 import { Navbar } from '@/components/features/home/Navbar';
+import { computeATSScore } from '@/lib/resume-builder';
 
 const AuthModal = dynamic(
   () => import('@/components/features/auth/AuthModal').then((m) => ({ default: m.AuthModal })),
@@ -106,9 +110,9 @@ function SidebarBreadcrumb() {
 
 // ── Sidebar step item (desktop) ───────────────────────────────────────────────
 function SidebarStepItem({
-  step, index, isActive, isDone, isMore, locked, showCheck, isLast, isDragging, onClick,
+  step, index, isActive, isMore, locked, showCheck, isLast, isDragging, onClick,
 }: {
-  step: StepConfig; index: number; isActive: boolean; isDone: boolean; isMore: boolean;
+  step: StepConfig; index: number; isActive: boolean; isMore: boolean;
   locked: boolean; showCheck: boolean; isLast: boolean; isDragging: boolean; onClick: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
@@ -166,7 +170,7 @@ function SidebarStepItem({
 function DrawerStepItem({
   step, index, isActive, isMore, locked, showCheck, isDragging, onClick,
 }: {
-  step: StepConfig; index: number; isActive: boolean; isDone: boolean; isMore: boolean;
+  step: StepConfig; index: number; isActive: boolean; isMore: boolean;
   locked: boolean; showCheck: boolean; isDragging: boolean; onClick: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
@@ -219,9 +223,11 @@ export function ConfirmModal({
 }: {
   title: string; message: string; confirmLabel?: string; onConfirm: () => void; onClose: () => void;
 }) {
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div className="w-full max-w-[420px]" onClick={(e) => e.stopPropagation()}>
@@ -261,21 +267,27 @@ export function ConfirmModal({
           This action cannot be undone.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 // ── Main layout ───────────────────────────────────────────────────────────────
+type ConfirmModalState = {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+} | null;
+
 export interface OnboardingLayoutProps {
   children: React.ReactNode;
-  session: any;
   isMounted: boolean;
   allSteps: StepConfig[];
   activeStep: string;
   currentIndex: number;
   currentStep: StepConfig;
-  completedCount: number;
-  totalCount: number;
   progressPct: number;
   isLastStep: boolean;
   isLoading: boolean;
@@ -289,38 +301,35 @@ export interface OnboardingLayoutProps {
   showPreview: boolean;
   setShowPreview: (fn: ((p: boolean) => boolean) | boolean) => void;
   activeDragId: string | null;
-  handleDragStart: (e: any) => void;
-  handleDragEnd: (e: any) => void;
-  sensors: any;
+  handleDragStart: (e: DragStartEvent) => void;
+  handleDragEnd: (e: DragEndEvent) => void;
+  sensors: React.ComponentProps<typeof DndContext>['sensors'];
   visitedSteps: Set<string>;
   isStepComplete: (id: string) => boolean;
   selectedMoreIds: string[];
   toggleMoreSection: (id: string) => void;
   stepNavRef: React.RefObject<HTMLDivElement | null>;
-  debouncedResumeData: any;
-  previewTemplate: any;
-  setPreviewTemplate: (t: any) => void;
-  templateOptions: any;
-  setTemplateOptions: (opts: any) => void;
+  debouncedResumeData: ResumeData;
+  previewTemplate: TemplateId;
+  setPreviewTemplate: (t: TemplateId) => void;
+  templateOptions: TemplateOptions;
+  setTemplateOptions: (opts: TemplateOptions) => void;
   canUndo: boolean;
   canRedo: boolean;
   undo: () => void;
   redo: () => void;
   setActiveStep: (id: string) => void;
-  confirmModal: { open: boolean; title: string; message: string; confirmLabel?: string; onConfirm: () => void } | null;
-  setConfirmModal: (v: any) => void;
+  confirmModal: ConfirmModalState;
+  setConfirmModal: React.Dispatch<React.SetStateAction<ConfirmModalState>>;
 }
 
 export function OnboardingLayout({
   children,
-  session,
   isMounted,
   allSteps,
   activeStep,
   currentIndex,
   currentStep,
-  completedCount,
-  totalCount,
   progressPct,
   isLastStep,
   isLoading,
@@ -357,6 +366,13 @@ export function OnboardingLayout({
 }: OnboardingLayoutProps) {
   const [activeTab, setActiveTab] = useState<BuilderTab>('edit');
   const [cmdOpen, setCmdOpen]     = useState(false);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [importCardVisible, setImportCardVisible] = useState(true);
+
+  const atsScore = React.useMemo(
+    () => debouncedResumeData ? computeATSScore(debouncedResumeData).score : undefined,
+    [debouncedResumeData]
+  );
 
   // Save latest resume snapshot so /resume/resume-score can read it
   useEffect(() => {
@@ -386,6 +402,41 @@ export function OnboardingLayout({
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [activeStep]);
 
+  useEffect(() => {
+    if (!mobilePreviewOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobilePreviewOpen]);
+
+  const renderResumePreview = () => (
+    <ResumePreview
+      data={debouncedResumeData}
+      templateId={previewTemplate}
+      templateOptions={templateOptions}
+      onTemplateChange={setPreviewTemplate}
+      onOptionsChange={(opts: TemplateOptions) => {
+        setTemplateOptions(opts);
+        localStorage.setItem('resumeTemplateOptions', JSON.stringify(opts));
+      }}
+      activeSection={activeStep}
+      onSectionClick={(id: string) => {
+        setActiveStep(id);
+        setActiveTab('edit');
+        setMobilePreviewOpen(false);
+      }}
+      canUndo={canUndo}
+      canRedo={canRedo}
+      onUndo={undo}
+      onRedo={redo}
+      onRequireAuth={() => setIsAuthModalOpen(true)}
+    />
+  );
+
   return (
     <section className="flex h-screen flex-col overflow-hidden bg-slate-50">
       <Navbar onLoginClick={() => setIsAuthModalOpen(true)} authButtonText="Login / Sign up" />
@@ -402,12 +453,12 @@ export function OnboardingLayout({
           <>
             {/* Mobile steps drawer backdrop */}
             {stepsDrawerOpen && (
-              <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setStepsDrawerOpen(false)} />
+              <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setStepsDrawerOpen(false)} />
             )}
 
             {/* Mobile steps drawer */}
             <div
-              className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-white shadow-2xl md:hidden transition-transform duration-300 ${
+              className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-white shadow-2xl lg:hidden transition-transform duration-300 ${
                 stepsDrawerOpen ? 'translate-y-0' : 'translate-y-full'
               }`}
               style={{ maxHeight: '80dvh' }}
@@ -446,12 +497,11 @@ export function OnboardingLayout({
                             step={step}
                             index={index}
                             isActive={isActive}
-                            isDone={isDone}
                             isMore={isMore}
                             locked={locked}
                             showCheck={isDone && !isActive && !isMore}
                             isDragging={activeDragId === step.id}
-                            onClick={() => { setActiveStep(step.id); setStepsDrawerOpen(false); }}
+                            onClick={() => { setActiveStep(step.id); setStepsDrawerOpen(false); setActiveTab('edit'); }}
                           />
                         );
                       })}
@@ -497,7 +547,7 @@ export function OnboardingLayout({
             </div>
 
             {/* Mobile unified bottom bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white md:hidden">
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white lg:hidden">
               <div className="px-4 pt-3 pb-2">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -515,7 +565,7 @@ export function OnboardingLayout({
                       <FiChevronUp className="text-sm" />
                     </button>
                   </div>
-                  <span className="text-[11px] text-slate-400">{completedCount}/{totalCount} done</span>
+                  <span className="text-[11px] font-medium text-slate-400">{Math.round(progressPct)}% done</span>
                 </div>
                 <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100">
                   <div className="h-full rounded-full bg-indigo-600 transition-all duration-500" style={{ width: `${progressPct}%` }} />
@@ -542,11 +592,51 @@ export function OnboardingLayout({
               </div>
             </div>
 
+            <div
+              className={`fixed inset-0 z-40 bg-slate-950/45 transition-opacity duration-300 lg:hidden ${
+                mobilePreviewOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+              onClick={() => setMobilePreviewOpen(false)}
+              aria-hidden="true"
+            />
+
+            <div
+              className={`fixed bottom-0 right-0 top-[56px] z-50 flex w-full max-w-full flex-col overflow-hidden bg-[#e8eaed] shadow-[-24px_0_60px_rgba(15,23,42,0.28)] transition-transform duration-300 ease-out lg:hidden ${
+                mobilePreviewOpen ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Resume preview"
+            >
+              <div className="flex h-11 flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
+                <button
+                  type="button"
+                  onClick={() => setMobilePreviewOpen(false)}
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-500 shadow-sm transition hover:bg-indigo-50 hover:text-indigo-600"
+                  aria-label="Close resume preview"
+                >
+                  <FiX className="text-sm" />
+                </button>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                    <FiEye className="text-sm" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-slate-900">Preview</p>
+                    <p className="text-[10px] text-slate-400">Live resume view</p>
+                  </div>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1">
+                {mobilePreviewOpen && renderResumePreview()}
+              </div>
+            </div>
+
             {/* Main layout wrapper */}
             <div className="flex flex-1 overflow-hidden relative">
 
               {/* Desktop sidebar */}
-              <aside className="hidden md:flex w-[20%] min-w-[260px] max-w-[300px] flex-shrink-0 flex-col border-r border-slate-200 bg-white">
+              <aside className="hidden lg:flex w-[20%] min-w-[260px] max-w-[300px] flex-shrink-0 flex-col border-r border-slate-200 bg-white">
                 <div className="flex h-11 flex-shrink-0 items-center border-b border-slate-200 px-5">
                   <SidebarBreadcrumb />
                 </div>
@@ -573,13 +663,12 @@ export function OnboardingLayout({
                               step={step}
                               index={index}
                               isActive={isActive}
-                              isDone={isDone}
                               isMore={isMore}
                               locked={locked}
                               showCheck={showCheck}
                               isLast={index === allSteps.length - 1}
                               isDragging={activeDragId === step.id}
-                              onClick={() => setActiveStep(step.id)}
+                              onClick={() => { setActiveStep(step.id); setActiveTab('edit'); }}
                             />
                           );
                         })}
@@ -611,8 +700,8 @@ export function OnboardingLayout({
                 </div>
                 <div className="flex h-[72px] flex-col justify-center border-t border-slate-200 px-5">
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-slate-500">Progress</span>
-                    <span className="text-[10px] font-bold text-slate-600">{completedCount}/{totalCount}</span>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Progress</span>
+                    <span className="text-[11px] font-bold text-slate-600">{Math.round(progressPct)}%</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-indigo-600 transition-all duration-500" style={{ width: `${progressPct}%` }} />
@@ -624,7 +713,23 @@ export function OnboardingLayout({
               <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 transition-all duration-500 ease-in-out">
 
                 {/* ── Builder tab bar ────────────────────────────────────── */}
-                <BuilderTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+                <div className="relative">
+                  <BuilderTabBar activeTab={activeTab} onTabChange={setActiveTab} atsScore={atsScore} />
+                  {!mobilePreviewOpen && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStepsDrawerOpen(false);
+                        setMobilePreviewOpen(true);
+                      }}
+                      className="absolute right-3 top-1/2 z-20 flex h-8 -translate-y-1/2 cursor-pointer items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-2.5 text-[11px] font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 active:scale-[0.98] lg:hidden"
+                      aria-label="Open resume preview"
+                    >
+                      <FiEye className="text-sm" />
+                      <span>Preview</span>
+                    </button>
+                  )}
+                </div>
 
                 {/* ── Tab panels (all rendered, only active is visible) ── */}
                 <div className="relative flex-1 overflow-hidden">
@@ -641,7 +746,7 @@ export function OnboardingLayout({
                     }}
                   >
                     {/* Mobile horizontal step navigator */}
-                    <div ref={stepNavRef} className="md:hidden overflow-x-auto border-b border-slate-100 bg-white scrollbar-none flex-shrink-0">
+                    <div ref={stepNavRef} className="lg:hidden overflow-x-auto border-b border-slate-100 bg-white scrollbar-none flex-shrink-0">
                       <div className="flex items-center gap-0.5 px-3 py-2 min-w-max">
                         {allSteps.map((step, index) => {
                           const isActive = activeStep === step.id;
@@ -652,7 +757,7 @@ export function OnboardingLayout({
                               key={step.id}
                               type="button"
                               data-step={step.id}
-                              onClick={() => setActiveStep(step.id)}
+                              onClick={() => { setActiveStep(step.id); setActiveTab('edit'); }}
                               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                                 isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
                               }`}
@@ -671,7 +776,12 @@ export function OnboardingLayout({
 
                     {/* Scrollable form content */}
                     <div className="flex-1 overflow-y-auto pb-[8.5rem] md:pb-0">
-                      <div className="px-5 pb-8 pt-8 sm:px-8 md:px-10 md:pb-10 md:pt-12">
+                      {activeStep === 'personal' && importCardVisible && (
+                        <div className="px-5 pt-6 sm:px-8 md:px-10">
+                          <ResumeImportCard onDismiss={() => setImportCardVisible(false)} />
+                        </div>
+                      )}
+                      <div className="px-5 pb-8 pt-6 sm:px-8 md:px-10 md:pb-10 md:pt-8">
                         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-indigo-600">
                           Step {currentIndex + 1} / {allSteps.length}
                         </p>
@@ -684,7 +794,7 @@ export function OnboardingLayout({
                     </div>
 
                     {/* Desktop action bar */}
-                    <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 md:flex md:items-center sm:px-8 md:px-10">
+                    <div className="hidden h-[72px] border-t border-slate-200 bg-white px-5 lg:flex lg:items-center sm:px-8 lg:px-10">
                       <div className="flex w-full items-center justify-between">
                         <div className="flex items-center gap-3">
                           <button onClick={handleReset} className="cursor-pointer text-sm text-slate-400 transition hover:text-slate-600 px-1">Reset</button>
@@ -747,19 +857,7 @@ export function OnboardingLayout({
                     }
                   </div>
 
-                  {/* ── SMART ASSIST tab ─────────────────────────────── */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      opacity:        activeTab === 'smart-assist' ? 1 : 0,
-                      transform:      activeTab === 'smart-assist' ? 'translateY(0)' : 'translateY(10px)',
-                      pointerEvents:  activeTab === 'smart-assist' ? 'auto' : 'none',
-                      transition:     'opacity 260ms ease, transform 260ms ease',
-                      zIndex:         activeTab === 'smart-assist' ? 10 : 0,
-                    }}
-                  >
-                    <SmartAssistPanel />
-                  </div>
+
 
                   {/* ── OPTIMIZE FOR JOB tab ─────────────────────────── */}
                   <div
@@ -780,7 +878,7 @@ export function OnboardingLayout({
 
               {/* Resume preview panel */}
               <div
-                className="hidden md:block overflow-hidden flex-shrink-0 border-l border-slate-200 bg-[#e8eaed] transition-all duration-500 ease-in-out"
+                className="hidden lg:block overflow-hidden flex-shrink-0 border-l border-slate-200 bg-[#e8eaed] transition-all duration-500 ease-in-out"
                 style={{
                   width: showPreview ? '35%' : '0%',
                   opacity: showPreview ? 1 : 0,
@@ -795,22 +893,7 @@ export function OnboardingLayout({
                     minWidth: '500px',
                   }}
                 >
-                  <ResumePreview
-                    data={debouncedResumeData}
-                    templateId={previewTemplate}
-                    templateOptions={templateOptions}
-                    onTemplateChange={setPreviewTemplate}
-                    onOptionsChange={(opts: any) => {
-                      setTemplateOptions(opts);
-                      localStorage.setItem('resumeTemplateOptions', JSON.stringify(opts));
-                    }}
-                    activeSection={activeStep}
-                    onSectionClick={(id: string) => setActiveStep(id)}
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    onUndo={undo}
-                    onRedo={redo}
-                  />
+                  {renderResumePreview()}
                 </div>
               </div>
 

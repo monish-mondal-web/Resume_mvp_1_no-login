@@ -4,7 +4,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -20,18 +21,31 @@ import { FiChevronDown, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 import { MdDragIndicator } from 'react-icons/md';
 
 interface SortableListProps {
-  fields: any[];
+  fields: { id: string }[];
   onMove: (from: number, to: number) => void;
   onRemove: (index: number) => void;
   renderItem: (index: number) => React.ReactNode;
-  getItemTitle: (field: any, index: number) => string;
+  getItemTitle: (field: { id: string }, index: number) => string;
   itemTypeLabel: string;
   baseName: string;
 }
 
+interface SortableItemProps {
+  id: string;
+  index: number;
+  field: { id: string };
+  getItemTitle: SortableListProps['getItemTitle'];
+  itemTypeLabel: string;
+  baseName: string;
+  renderItem: SortableListProps['renderItem'];
+  onRemove: SortableListProps['onRemove'];
+  expandedId: string | null;
+  setExpandedId: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
 function SortableItem({ 
   id, index, field, getItemTitle, itemTypeLabel, baseName, renderItem, onRemove, expandedId, setExpandedId 
-}: any) {
+}: SortableItemProps) {
   const { watch, setValue } = useFormContext();
   const isHidden = watch(`${baseName}.${index}.isHidden`);
   const isExpanded = expandedId === id;
@@ -48,7 +62,7 @@ function SortableItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 10 : 1,
+    zIndex: isDragging ? 10 : isExpanded ? 5 : 1,
   };
 
   return (
@@ -72,7 +86,7 @@ function SortableItem({
             {...attributes} 
             {...listeners} 
             onClick={(e) => e.stopPropagation()}
-            className="cursor-grab text-slate-300 transition-colors hover:text-indigo-500 active:cursor-grabbing p-1 -ml-1 rounded"
+            className="cursor-grab text-slate-300 transition-colors hover:text-indigo-500 active:cursor-grabbing p-1 -ml-1 rounded touch-none"
           >
             <MdDragIndicator className="text-xl" />
           </div>
@@ -95,7 +109,7 @@ function SortableItem({
               e.stopPropagation();
               setValue(`${baseName}.${index}.isHidden`, !isHidden, { shouldDirty: true });
             }}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+            className={`cursor-pointer flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
               isHidden ? 'bg-slate-200 text-slate-600 hover:bg-slate-300' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
             }`}
           >
@@ -109,7 +123,7 @@ function SortableItem({
               e.stopPropagation();
               onRemove(index);
             }}
-            className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            className="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
           >
             <FiTrash2 />
           </button>
@@ -122,8 +136,8 @@ function SortableItem({
       </div>
 
       {/* Expandable Body */}
-      <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-        <div className="overflow-hidden">
+      <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
+        <div className={isExpanded ? 'overflow-visible' : 'overflow-hidden'}>
           <div className="p-5 pt-4 space-y-4">
             {renderItem(index)}
           </div>
@@ -137,7 +151,8 @@ export function SortableList({ fields, onMove, onRemove, renderItem, getItemTitl
   const [expandedId, setExpandedId] = useState<string | null>(fields[0]?.id || null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 

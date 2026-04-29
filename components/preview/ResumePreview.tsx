@@ -10,9 +10,9 @@ import { TemplateCustomizer } from './TemplateCustomizer';
 import { MiniTemplate1, MiniTemplate2, MiniTemplate3, TEMPLATES } from './TemplateSelectPopup';
 import { ACCENT_COLORS } from '@/types/resume.types';
 import {
-  FiLayout, FiSliders, FiRotateCcw, FiRotateCw,
-  FiPlus, FiMinus, FiDownload, FiMaximize, FiX,
-  FiMaximize2, FiMinimize2,
+  FiLayout, FiSliders,
+  FiPlus, FiMinus, FiDownload,
+  FiMaximize2,
   FiCornerUpLeft, FiCornerUpRight,
   FiEdit2, FiMaximize as FiMaximizeIcon,
 } from 'react-icons/fi';
@@ -57,11 +57,11 @@ function SideDrawer({
         {/* Close button — aligned to h-11 header */}
         <button
           onClick={onClose}
-          title="Close"
+          title="Close Panel"
           className="flex h-11 w-full flex-shrink-0 cursor-pointer items-center justify-center border-b border-slate-200 text-slate-400 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-600 active:opacity-70"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
 
@@ -158,12 +158,14 @@ interface Props {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onRequireAuth?: () => void;
 }
 
 export function ResumePreview({
   data, templateId, templateOptions, activeSection,
   onTemplateChange, onOptionsChange, onSectionClick,
   onUndo, onRedo, canUndo = false, canRedo = false,
+  onRequireAuth,
 }: Props) {
   const containerRef     = useRef<HTMLDivElement>(null);
   const exportRef        = useRef<HTMLDivElement>(null);
@@ -174,15 +176,22 @@ export function ResumePreview({
   const [nameWidth, setNameWidth]     = useState(80);
   const [activePanel, setActivePanel] = useState<'tpl' | 'stl' | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [fileName, setFileName]       = useState('');
+  const [fileName, setFileName]       = useState(() => (
+    data.personal?.firstName ? `${data.personal.firstName}_resume`.toLowerCase() : ''
+  ));
+  const fileNameEditedRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const { data: session } = useSession();
+  const touchState = useRef<{ initialDist: number; initialZoom: number } | null>(null);
 
   useEffect(() => {
-    if (!fileName && data.personal?.firstName) {
+    if (fileNameEditedRef.current || !data.personal?.firstName) return;
+
+    const timeout = window.setTimeout(() => {
       setFileName(`${data.personal.firstName}_resume`.toLowerCase());
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [data.personal?.firstName]);
 
   // Update input width based on text length
@@ -194,7 +203,6 @@ export function ResumePreview({
   
   const isAutoFit    = useRef(true); 
   const zoomPct      = Math.round(zoom * 100);
-  const scaledW      = A4_W * zoom;
   const pageCount    = Math.max(1, Math.ceil(contentH / A4_H));
 
   // Measure the hidden export container (no CSS transforms) to get the true content height.
@@ -212,7 +220,8 @@ export function ResumePreview({
 
   const doFit = useCallback((scrollToTop = false) => {
     if (!containerRef.current) return;
-    const w = containerRef.current.clientWidth - 64; // 32px padding each side (md:px-8)
+    const pad = typeof window !== 'undefined' && window.innerWidth >= 1024 ? 64 : 32;
+    const w = containerRef.current.clientWidth - pad;
     if (w > 0) {
       setZoom(clamp(round2(w / A4_W), ZOOM_MIN, ZOOM_MAX));
     }
@@ -285,11 +294,62 @@ export function ResumePreview({
       const idx = Math.floor((top + ph / 3) / ph);
       setCurrentPage(Math.min(pageCount, idx + 1));
     };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        touchState.current = { initialDist: dist, initialZoom: zoom };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchState.current) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        
+        const scale = dist / touchState.current.initialDist;
+        const newZoom = clamp(round2(touchState.current.initialZoom * scale), ZOOM_MIN, ZOOM_MAX);
+        
+        if (newZoom !== zoom) {
+          isAutoFit.current = false;
+          const centerX = (t1.clientX + t2.clientX) / 2;
+          const centerY = (t1.clientY + t2.clientY) / 2;
+          
+          const contentEl = el.firstElementChild as HTMLElement;
+          if (contentEl) {
+            const contentRect = contentEl.getBoundingClientRect();
+            zoomAnchorRef.current = {
+              mx: centerX - contentRect.left,
+              my: centerY - contentRect.top,
+              oldZoom: zoom,
+              clientX: centerX,
+              clientY: centerY
+            };
+          }
+          setZoom(newZoom);
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchState.current = null;
+    };
+
     el.addEventListener('wheel', onWheel, { passive: false });
     el.addEventListener('scroll', onScroll);
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
     return () => {
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('scroll', onScroll);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
     };
   }, [zoom, pageCount]);
 
@@ -315,7 +375,7 @@ export function ResumePreview({
     if (!containerRef.current) return;
     isAutoFit.current = false;
     const padH = 120; // Vertical padding for top/bottom spacing
-    const padW = 64;
+    const padW = typeof window !== 'undefined' && window.innerWidth >= 1024 ? 64 : 32;
     const zoomH = (containerRef.current.clientHeight - padH) / A4_H;
     const zoomW = (containerRef.current.clientWidth - padW) / A4_W;
     setZoom(clamp(round2(Math.min(zoomH, zoomW)), ZOOM_MIN, ZOOM_MAX));
@@ -325,7 +385,7 @@ export function ResumePreview({
   const fitWidth = useCallback(() => {
     if (!containerRef.current) return;
     isAutoFit.current = true;
-    const pad = 64; // match padding in doFit
+    const pad = typeof window !== 'undefined' && window.innerWidth >= 1024 ? 64 : 32;
     const w = containerRef.current.clientWidth - pad;
     setZoom(clamp(round2(w / A4_W), ZOOM_MIN, ZOOM_MAX));
     containerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
@@ -339,7 +399,10 @@ export function ResumePreview({
   };
 
   const handleExport = async (type: 'pdf' | 'png' | 'jpg') => {
-    if (!session) { setShowLoginModal(true); return; }
+    if (!session) {
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
     setIsExporting(true);
     try {
       // Always capture the hidden export container — it renders at full 794px width
@@ -370,35 +433,7 @@ export function ResumePreview({
         </div>
       </div>
 
-      {/* ── Login modal ─────────────────────────────────────────────────────── */}
-      {showLoginModal && (
-        <div
-          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowLoginModal(false)}
-        >
-          <div
-            className="mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="mb-1 text-xl font-semibold text-slate-900">Sign in required</h2>
-            <p className="mb-6 text-sm text-slate-500">Please sign in to download your resume.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowLoginModal(false)}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600 transition hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <a
-                href="/"
-                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-center text-sm font-medium text-white transition hover:bg-indigo-700"
-              >
-                Sign in
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Login modal removed in favor of main AuthModal ── */}
       
       {/* ── Floating Shortcut Tabs (Layout + Style only) ─────────────── */}
       {!activePanel && (
@@ -409,7 +444,7 @@ export function ResumePreview({
           ].map((tab, i) => (
             <button
               key={tab.id}
-              onClick={() => setActivePanel(tab.id as any)}
+              onClick={() => setActivePanel(tab.id as 'tpl' | 'stl')}
               className={`group relative flex flex-col items-center justify-center gap-1 w-11 h-[52px] cursor-pointer text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600 ${i < 1 ? 'border-b border-slate-100' : ''}`}
             >
               <tab.icon className="text-[15px]" />
@@ -432,7 +467,10 @@ export function ResumePreview({
               </span>
               <input
                 value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
+                onChange={(e) => {
+                  fileNameEditedRef.current = true;
+                  setFileName(e.target.value);
+                }}
                 style={{ width: `${nameWidth}px` }}
                 className="bg-transparent text-[11px] font-semibold text-slate-700 outline-none border-b border-dotted border-slate-300 hover:border-slate-400 focus:border-indigo-400 transition-colors py-0.5"
                 placeholder={data.personal?.firstName ? `${data.personal.firstName}_resume` : "Untitled Resume"}
@@ -456,7 +494,7 @@ export function ResumePreview({
         </div>
 
         <div ref={containerRef} className="flex-1 overflow-auto bg-[#e2e5e9] no-scrollbar">
-          <div className="flex flex-col items-center py-5 pb-24 px-4 md:px-8" style={{ minWidth: 'max-content', width: '100%' }}>
+          <div className="flex flex-col items-center py-5 pb-24 px-4 lg:px-8" style={{ minWidth: 'max-content', width: '100%' }}>
             {Array.from({ length: pageCount }).map((_, pageIdx) => (
               <div key={pageIdx} className="flex flex-col items-center" style={{ width: '100%' }}>
                 {/* Page separator label above page 2+ */}
@@ -493,7 +531,7 @@ export function ResumePreview({
           </div>
         </div>
 
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-2xl bg-slate-900/90 p-1.5 text-white shadow-2xl backdrop-blur-md ring-1 ring-white/10">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-2xl bg-slate-900/90 p-1.5 text-white shadow-2xl backdrop-blur-md ring-1 ring-white/10 max-[430px]:bottom-5 max-[430px]:-translate-x-[58%]">
           <div className="flex items-center bg-white/10 rounded-xl p-0.5">
             <button onClick={() => manualZoom(clamp(round2(zoom - ZOOM_STEP), ZOOM_MIN, ZOOM_MAX))} className="group relative cursor-pointer p-2 hover:bg-white/10 rounded-lg transition-colors">
               <FiMinus className="text-sm" />
@@ -524,7 +562,7 @@ export function ResumePreview({
           </button>
         </div>
 
-        <div className="absolute bottom-6 right-8 z-50">
+        <div className="absolute bottom-20 right-5 z-50 sm:bottom-6 sm:right-8">
           <button onClick={goToNextPage} className="cursor-pointer rounded-full bg-white/90 px-4 py-2 text-[10px] font-semibold text-slate-600 shadow-2xl border border-slate-200/60 backdrop-blur-xl transition-all hover:border-indigo-200 hover:text-indigo-600 hover:bg-white active:scale-95 uppercase tracking-widest">
             Page {currentPage} of {pageCount}
           </button>
@@ -538,11 +576,12 @@ export function ResumePreview({
           onTabSwitch={(tab) => setActivePanel(tab)}
           onClose={() => setActivePanel(null)}
         >
-          {activePanel === 'stl' && (
+          {/* Both panels stay mounted so internal state (accordion open/close) is preserved */}
+          <div style={{ display: activePanel === 'stl' ? 'block' : 'none' }}>
             <TemplateCustomizer options={templateOptions} onChange={onOptionsChange} />
-          )}
+          </div>
 
-          {activePanel === 'tpl' && (
+          <div style={{ display: activePanel === 'tpl' ? 'block' : 'none' }}>
             <div className="space-y-4">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Available Templates</p>
               <div className="grid grid-cols-1 gap-4">
@@ -568,7 +607,7 @@ export function ResumePreview({
                 })}
               </div>
             </div>
-          )}
+          </div>
         </SideDrawer>
       </div>
     </div>

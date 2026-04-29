@@ -582,6 +582,20 @@ export function TemplateCustomizer({ options, onChange }: Props) {
                   onChange={v => onChange({ ...options, imageSize: v })}
                 />
               </div>
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2">
+                <p className="text-[11px] font-medium text-slate-600">Photo Border</p>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...options, imageBorder: options.imageBorder === false ? true : false })}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border transition-colors duration-200 ${
+                    options.imageBorder !== false ? 'border-indigo-400 bg-indigo-500' : 'border-slate-300 bg-slate-200'
+                  }`}
+                >
+                  <span className={`absolute top-[2px] inline-block h-[14px] w-[14px] rounded-full bg-white transition-all duration-200 ${
+                    options.imageBorder !== false ? 'left-[18px]' : 'left-[2px]'
+                  }`} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

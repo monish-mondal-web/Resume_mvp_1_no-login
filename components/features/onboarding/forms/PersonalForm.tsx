@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { useSession } from 'next-auth/react';
-import { FiX, FiUpload, FiPlus, FiArrowRight, FiAlertTriangle } from 'react-icons/fi';
+import type { Session } from 'next-auth';
+import { FiX, FiUpload, FiPlus, FiArrowRight } from 'react-icons/fi';
 import { FaLinkedin, FaGithub, FaXTwitter, FaDiscord, FaFigma, FaDribbble, FaBehance, FaSketch } from 'react-icons/fa6';
-import { FiGlobe, FiExternalLink, FiMessageSquare, FiSearch } from 'react-icons/fi';
-import { Autocomplete } from '@/components/ui/Autocomplete';
+import { FiGlobe, FiExternalLink } from 'react-icons/fi';
 import { getSummariesForRole } from '@/lib/summary-templates';
-import { CF, ACA, TA } from './FormFields';
+import { CF, ACA, TA, AiSparkleIcon, AiSuggestionsButton } from './FormFields';
+import { SuggestionsModal } from './SuggestionsModal';
 import { useOnboardingContext } from '../OnboardingContext';
 import type { OnboardingFormValues } from '../types';
 
@@ -26,19 +28,11 @@ const SOCIAL_PLATFORMS = [
   { id: 'custom',   label: 'Custom',       icon: <FiExternalLink />, placeholder: 'https://example.com' },
 ];
 
-function AiSparkleIcon({ className }: { className?: string }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path d="M12 2l1.8 5.4L19.2 9l-5.4 1.8L12 16.2l-1.8-5.4L4.8 9l5.4-1.8L12 2z" fill="currentColor" />
-      <path d="M19 14l.9 2.6L22.5 17.5l-2.6.9L19 21l-.9-2.6L15.5 17.5l2.6-.9L19 14z" fill="currentColor" opacity=".7" />
-      <path d="M5.5 16l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9z" fill="currentColor" opacity=".5" />
-    </svg>
-  );
-}
+
 
 function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
   currentPublicId?: string;
-  session: any;
+  session: Session | null;
   onUploaded: (url: string, publicId: string) => void;
   onClose: () => void;
 }) {
@@ -114,8 +108,10 @@ function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
     xhr.send(fd);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" onClick={onClose}>
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h2 className="text-base font-semibold text-slate-900">Upload Profile Photo</h2>
@@ -187,75 +183,12 @@ function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-function SummarySuggestionsModal({ currentTitle, onSelect, onClose }: {
-  currentTitle: string; onSelect: (s: string) => void; onClose: () => void;
-}) {
-  const [searchRole, setSearchRole] = useState(currentTitle);
-  const [summaries, setSummaries]   = useState<string[]>([]);
-  const [loading, setLoading]       = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    const t = setTimeout(() => { setSummaries(getSummariesForRole(searchRole)); setLoading(false); }, 500);
-    return () => clearTimeout(t);
-  }, [searchRole]);
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 flex-shrink-0">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Summary Suggestions</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Find ATS-friendly phrases tailored to your role</p>
-          </div>
-          <button onClick={onClose} className="cursor-pointer text-slate-400 transition hover:text-slate-600"><FiX className="text-xl" /></button>
-        </div>
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-          <div className="mb-6">
-            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Search by Job Title</label>
-            <Autocomplete type="role" value={searchRole} onChange={setSearchRole} trackOnBlur={false}
-              placeholder="e.g. Frontend Developer"
-              inputClassName="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 shadow-sm" />
-          </div>
-          <div className="space-y-4">
-            {loading ? (
-              <div className="py-16 flex flex-col items-center justify-center">
-                <div className="relative flex h-16 w-16 items-center justify-center">
-                  <div className="absolute inset-0 animate-ping rounded-full bg-indigo-500/20" />
-                  <div className="relative h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                </div>
-                <p className="mt-6 text-sm font-medium text-slate-500 animate-pulse">Generating AI suggestions...</p>
-              </div>
-            ) : summaries.length > 0 ? (
-              summaries.map((s, idx) => (
-                <div key={idx} className="group relative rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-indigo-300 hover:shadow-md">
-                  <div className="flex gap-4">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                      <FiMessageSquare className="text-sm" />
-                    </div>
-                    <p className="flex-1 text-sm leading-relaxed text-slate-700">{s}</p>
-                  </div>
-                  <div className="mt-4 flex justify-end">
-                    <button onClick={() => onSelect(s)}
-                      className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-indigo-600 hover:text-white">
-                      <FiPlus className="text-sm" /> Use this summary
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-10 text-center"><p className="text-sm text-slate-500">Type a job title to see suggestions.</p></div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function PersonalForm() {
   const { register, setValue, control } = useFormContext<OnboardingFormValues>();
@@ -365,12 +298,7 @@ export function PersonalForm() {
       <TA label="Profile Summary" {...register('personalInfo.summary')}
         placeholder="Briefly describe your background, key skills, and what you're looking for..."
         hint="A strong summary captures a recruiter's attention in seconds."
-        action={
-          <button type="button" onClick={() => setSuggestionsOpen(true)}
-            className="group flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">
-            <AiSparkleIcon className="text-slate-400 transition-colors group-hover:text-indigo-500" /> AI Suggestions
-          </button>
-        }
+        action={<AiSuggestionsButton onClick={() => setSuggestionsOpen(true)} />}
       />
 
       {/* Social & Portfolio Links */}
@@ -433,13 +361,17 @@ export function PersonalForm() {
           onClose={() => setModalOpen(false)}
         />
       )}
-      {suggestionsOpen && (
-        <SummarySuggestionsModal
-          currentTitle={professionalTitle || ''}
-          onSelect={(s) => { setValue('personalInfo.summary', s); setSuggestionsOpen(false); }}
-          onClose={() => setSuggestionsOpen(false)}
-        />
-      )}
+      <SuggestionsModal
+        isOpen={suggestionsOpen}
+        onClose={() => setSuggestionsOpen(false)}
+        onSelect={(s) => { setValue('personalInfo.summary', s); setSuggestionsOpen(false); }}
+        title="Summary Suggestions"
+        subtitle="Find ATS-friendly phrases tailored to your role"
+        searchLabel="Search by Job Title"
+        searchPlaceholder="e.g. Frontend Developer"
+        defaultSearch={professionalTitle || ''}
+        fetchSuggestions={getSummariesForRole}
+      />
     </div>
   );
 }

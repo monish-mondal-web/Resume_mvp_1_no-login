@@ -87,7 +87,10 @@ export function Autocomplete({
 
   // Sync external value changes into local query state (e.g. form reset, programmatic setValue)
   useEffect(() => {
-    setQuery(value ?? '');
+    const nextValue = value ?? '';
+    const timeout = window.setTimeout(() => setQuery(nextValue), 0);
+
+    return () => window.clearTimeout(timeout);
   }, [value]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);

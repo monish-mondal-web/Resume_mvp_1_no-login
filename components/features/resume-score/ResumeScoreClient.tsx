@@ -195,10 +195,14 @@ export function ResumeScoreClient() {
       if (raw) data = JSON.parse(raw);
     } catch {}
 
-    if (data) {
-      setResult(computeATSScore(data));
-    }
-    setLoading(false);
+    const timeout = window.setTimeout(() => {
+      if (data) {
+        setResult(computeATSScore(data));
+      }
+      setLoading(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, []);
 
   const overall = result ? palette(result.score) : null;

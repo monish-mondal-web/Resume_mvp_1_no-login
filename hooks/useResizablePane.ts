@@ -79,7 +79,13 @@ export function useResizablePane(totalWidth: number) {
   // Clamp when window resizes
   useEffect(() => {
     const maxW = totalWidth - MIN_RIGHT;
-    if (leftWidth > maxW) setLeftWidth(Math.max(MIN_LEFT, maxW));
+    if (leftWidth <= maxW) return;
+
+    const timeout = window.setTimeout(() => {
+      setLeftWidth(Math.max(MIN_LEFT, maxW));
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [totalWidth, leftWidth]);
 
   return { leftWidth, onDividerMouseDown: onMouseDown };

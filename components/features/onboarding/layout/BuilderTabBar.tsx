@@ -2,17 +2,33 @@
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 
-export type BuilderTab = 'edit' | 'ats-score' | 'smart-assist' | 'optimize';
+export type BuilderTab = 'edit' | 'ats-score' | 'optimize';
 
 interface Props {
   activeTab: BuilderTab;
   onTabChange: (tab: BuilderTab) => void;
+  atsScore?: number;
+}
+
+function ScoreBadge({ score }: { score?: number }) {
+  if (score === undefined) return null;
+  let bg = '#ffe4e6', color = '#be123c';
+  if (score >= 80) { bg = '#dcfce7'; color = '#15803d'; }
+  else if (score >= 60) { bg = '#fef9c3'; color = '#a16207'; }
+  else if (score >= 40) { bg = '#ffedd5'; color = '#c2410c'; }
+  return (
+    <span
+      className="rounded-full px-1.5 py-[2px] text-[10px] font-bold leading-none tabular-nums"
+      style={{ background: bg, color }}
+    >
+      {score}
+    </span>
+  );
 }
 
 const TABS: { id: BuilderTab; label: string; short: string }[] = [
   { id: 'edit',         label: 'Edit',             short: 'Edit'     },
   { id: 'ats-score',    label: 'ATS Score',         short: 'ATS'      },
-  { id: 'smart-assist', label: 'Smart Assist',      short: 'Assist'   },
   { id: 'optimize',     label: 'Optimize for Job',  short: 'Optimize' },
 ];
 
@@ -31,13 +47,7 @@ function ATSIcon() {
     </svg>
   );
 }
-function AssistIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-    </svg>
-  );
-}
+
 function SparkleIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -46,7 +56,7 @@ function SparkleIcon() {
   );
 }
 
-export function BuilderTabBar({ activeTab, onTabChange }: Props) {
+export function BuilderTabBar({ activeTab, onTabChange, atsScore }: Props) {
   const tabRefs  = useRef<(HTMLButtonElement | null)[]>([]);
   const [bar, setBar] = useState({ left: 0, width: 0 });
 
@@ -57,7 +67,7 @@ export function BuilderTabBar({ activeTab, onTabChange }: Props) {
   }, [activeTab]);
 
   return (
-    <div className="relative flex h-11 flex-shrink-0 items-end border-b border-slate-200 bg-white px-4 sm:px-6 md:px-8">
+    <div className="relative flex h-11 flex-shrink-0 items-end border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
 
       {/* Sliding bottom indicator */}
       <span
@@ -88,12 +98,11 @@ export function BuilderTabBar({ activeTab, onTabChange }: Props) {
             <span className={`flex-shrink-0 transition-colors duration-150 ${
               isActive
                 ? isOptimize ? 'text-violet-600' : 'text-indigo-500'
-                : isOptimize ? 'text-violet-400' : 'text-slate-400 group-hover:text-slate-500'
+                : isOptimize ? 'text-violet-400' : 'text-slate-400'
             }`}>
-              {tab.id === 'edit'         && <EditIcon />}
-              {tab.id === 'ats-score'    && <ATSIcon />}
-              {tab.id === 'smart-assist' && <AssistIcon />}
-              {tab.id === 'optimize'     && <SparkleIcon />}
+              {tab.id === 'edit'      && <EditIcon />}
+              {tab.id === 'ats-score' && <ATSIcon />}
+              {tab.id === 'optimize'  && <SparkleIcon />}
             </span>
 
             {/* Label */}
@@ -109,6 +118,9 @@ export function BuilderTabBar({ activeTab, onTabChange }: Props) {
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.short}</span>
             </span>
+
+            {/* Score badge — ATS tab only, after label */}
+            {tab.id === 'ats-score' && <ScoreBadge score={atsScore} />}
 
             {/* NEW badge — Optimize only when inactive */}
             {isOptimize && !isActive && (

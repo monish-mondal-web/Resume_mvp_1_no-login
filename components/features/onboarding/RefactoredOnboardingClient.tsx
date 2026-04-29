@@ -29,8 +29,6 @@ export function RefactoredOnboardingClient() {
     debouncedResumeData,
     allSteps,
     isStepComplete,
-    completedCount,
-    totalCount,
     progressPct,
     currentIndex,
     currentStep,
@@ -60,15 +58,12 @@ export function RefactoredOnboardingClient() {
         }}
       >
         <OnboardingLayout
-          session={session}
           isMounted={isMounted}
           allSteps={allSteps}
           activeStep={activeStep}
           setActiveStep={setActiveStep}
           currentIndex={currentIndex}
           currentStep={currentStep}
-          completedCount={completedCount}
-          totalCount={totalCount}
           progressPct={progressPct}
           isLastStep={isLastStep}
           isLoading={isLoading}

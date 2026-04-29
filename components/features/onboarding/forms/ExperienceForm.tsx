@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import { FiActivity, FiPlusCircle } from 'react-icons/fi';
-import { CF, ACA, TA } from './FormFields';
+import { CF, ACA, TA, AiSuggestionsButton } from './FormFields';
 import { SortableList } from './SortableList';
+import { SuggestionsModal } from './SuggestionsModal';
+import { getSectionSuggestions } from '@/lib/section-suggestions';
 import { OnboardingFormValues } from '../types';
+
+type ExperienceSuggestionField = `experience.${number}.description`;
 
 export function EmptyState({ title, message }: { title: string; message?: string }) {
   return (
@@ -27,11 +31,20 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
 }
 
 export function ExperienceForm() {
-  const { control, register, watch } = useFormContext<OnboardingFormValues>();
+  const { control, register, watch, getValues, setValue } = useFormContext<OnboardingFormValues>();
+  const [suggestionField, setSuggestionField] = useState<ExperienceSuggestionField | null>(null);
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: 'experience',
   });
+
+  const handleSelectSuggestion = (text: string) => {
+    if (!suggestionField) return;
+    const currentText = getValues(suggestionField) || '';
+    const newText = currentText ? `${currentText}\n${text}` : `${text}`;
+    setValue(suggestionField, newText);
+    setSuggestionField(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -69,13 +82,26 @@ export function ExperienceForm() {
                 </label>
                 <TA label="What you did" {...register(`experience.${i}.description`)} rows={4}
                   placeholder="Describe key achievements. Start with a strong verb. Quantify."
-                  hint="One achievement per line. Start with a strong verb. Quantify." />
+                  hint="One achievement per line. Start with a strong verb. Quantify."
+                  action={<AiSuggestionsButton onClick={() => setSuggestionField(`experience.${i}.description`)} />}
+                />
               </div>
             );
           }}
         />
       )}
       <AddButton label={fields.length === 0 ? "Add experience" : "Add another position"} onClick={() => append({ id: Date.now().toString(), role: '', company: '', start: '', end: '', location: '', currentlyWorking: false, description: '', isHidden: false })} />
+      <SuggestionsModal
+        isOpen={!!suggestionField}
+        onClose={() => setSuggestionField(null)}
+        onSelect={handleSelectSuggestion}
+        title="Experience Suggestions"
+        subtitle="Find ATS-friendly bullet points for your experience"
+        searchLabel="Search by Job Role"
+        searchPlaceholder="e.g. Frontend Developer"
+        defaultSearch={watch('personalInfo.professionalTitle') || ''}
+        fetchSuggestions={(q) => getSectionSuggestions('experience', q)}
+      />
     </div>
   );
 }

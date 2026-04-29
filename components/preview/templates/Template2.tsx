@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/static-components */
+
 import React from 'react';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
@@ -137,7 +139,7 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
   const SectionHeader = ({ label }: { label: string }) => (
     <div style={{ marginBottom: 7, marginTop: 2 }}>
       <h2 style={{
-        fontSize: fs, fontWeight: 700, letterSpacing: '0.15em', color: '#111827',
+        fontSize: fs, fontWeight: 700, color: '#111827',
         textTransform: 'uppercase', fontVariant: 'small-caps', marginBottom: 3, lineHeight: 1.2,
         fontFamily: headFont,
       }}>
@@ -281,7 +283,7 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
                 {/* Line 2: Institution (indented, italic) + GPA right */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4, paddingLeft: 10 }}>
                   <span style={{ fontSize: fs - 0.5, fontStyle: 'italic', color: '#374151' }}>{e.school}</span>
-                  {e.gpa && <span style={{ fontSize: fs - 1, color: '#6b7280', flexShrink: 0 }}>CGPA: {e.gpa}</span>}
+                  {e.gpa && <span style={{ fontSize: fs - 1, color: '#6b7280', flexShrink: 0 }}>{e.gpaType === 'percentage' ? `Percentage: ${e.gpa}%` : `CGPA: ${e.gpa}`}</span>}
                 </div>
               </div>
             ))}
@@ -554,18 +556,20 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
           {options.showPhoto && personal.image?.url && (
             <div style={{
               width: imgPx, height: imgPx, borderRadius: imgRadius, overflow: 'hidden',
-              border: `1.5px solid #e5e7eb`, flexShrink: 0,
+              border: options.imageBorder !== false ? `1.5px solid #e5e7eb` : 'none',
+              flexShrink: 0,
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={personal.image.url}
                 alt="Profile"
+                loading="eager"
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </div>
           )}
           <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#111827', letterSpacing: '-0.01em', lineHeight: 1.1, margin: '0 0 2px', fontFamily: headFont }}>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1, margin: '0 0 2px', fontFamily: headFont }}>
               {personal.firstName} {personal.lastName}
             </h1>
             {firstEdu ? (

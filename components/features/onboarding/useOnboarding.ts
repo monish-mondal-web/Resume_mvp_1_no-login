@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
+import type { Session } from 'next-auth';
 import toast from 'react-hot-toast';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -68,7 +69,7 @@ function safeLocalGet<T>(key: string, def: T): T {
   }
 }
 
-function buildDefaultPersonalInfo(session: any) {
+function buildDefaultPersonalInfo(session: Session | null) {
   const fname = session?.user?.name?.split(' ')[0] || 'Rahul';
   const lname = session?.user?.name?.split(' ').slice(1).join(' ') || 'Sharma';
   const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
@@ -92,7 +93,7 @@ function buildDefaultPersonalInfo(session: any) {
   };
 }
 
-export function useOnboarding(session: any) {
+export function useOnboarding(session: Session | null) {
   const router = useRouter();
 
   // ── Hydration guard ──
@@ -108,9 +109,10 @@ export function useOnboarding(session: any) {
   const [selectedMoreIds, setSelectedMoreIds] = useState<string[]>(() =>
     safeLocalGet('selectedMoreIds', [])
   );
-  const [stepOrder, setStepOrder] = useState<string[]>(() =>
-    safeLocalGet('stepOrder', ['personal', 'experience', 'education', 'skills'])
-  );
+  const [stepOrder, setStepOrder] = useState<string[]>(() => {
+    const arr = safeLocalGet<string[]>('stepOrder', ['personal', 'experience', 'education', 'skills']);
+    return Array.from(new Set(arr));
+  });
 
   // ── UI state ──
   const [isLoading, setIsLoading] = useState(false);
@@ -124,10 +126,10 @@ export function useOnboarding(session: any) {
 
   // ── Template / preview state ──
   const [previewTemplate, setPreviewTemplate] = useState<TemplateId>(() => {
-    if (typeof window === 'undefined') return 'template1';
+    if (typeof window === 'undefined') return 'template2';
     try {
-      return (localStorage.getItem('resumeTemplateId') as TemplateId) || 'template1';
-    } catch { return 'template1'; }
+      return (localStorage.getItem('resumeTemplateId') as TemplateId) || 'template2';
+    } catch { return 'template2'; }
   });
   const [templateOptions, setTemplateOptions] = useState<TemplateOptions>(() => {
     if (typeof window === 'undefined') return DEFAULT_TEMPLATE_OPTIONS;
@@ -215,22 +217,30 @@ export function useOnboarding(session: any) {
   // isFormLoading is true while async defaultValues are still resolving — guard against it
   // so we never call getValues('personalInfo') before the form is populated.
   const isFormLoading = methods.formState.isLoading;
+  const { dirtyFields } = methods.formState;
+
   useEffect(() => {
     if (!session?.user || sessionAppliedRef.current || isFormLoading) return;
     const prev = methods.getValues('personalInfo');
     if (!prev) return;
+    
     sessionAppliedRef.current = true;
-    const fname = session.user.name?.split(' ')[0] || 'Rahul';
-    const lname = session.user.name?.split(' ').slice(1).join(' ') || 'Sharma';
+    const fname = session.user.name?.split(' ')[0] || '';
+    const lname = session.user.name?.split(' ').slice(1).join(' ') || '';
     const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
     const slug = [fname, lname].filter(Boolean).map((s: string) => s.toLowerCase().replace(/\s+/g, '-')).join('-');
 
+    // Only overwrite if the field is NOT dirty (not touched by user) AND it's currently empty (or default)
+    const isFirstNameEmpty = !prev.firstName || prev.firstName === 'Rahul';
+    const isLastNameEmpty  = !prev.lastName  || prev.lastName === 'Sharma';
+    const isEmailEmpty     = !prev.email     || prev.email === 'rahul.sharma@example.com';
+
     methods.setValue('personalInfo', {
       ...prev,
-      firstName: prev.firstName === 'Rahul' ? fname : prev.firstName,
-      lastName: prev.lastName === 'Sharma' ? lname : prev.lastName,
-      email: prev.email === 'rahul.sharma@example.com' ? (session.user.email ?? prev.email) : prev.email,
-      links: prev.links?.length ? prev.links : [
+      firstName: (!dirtyFields.personalInfo?.firstName && isFirstNameEmpty) ? fname : prev.firstName,
+      lastName:  (!dirtyFields.personalInfo?.lastName  && isLastNameEmpty)  ? lname : prev.lastName,
+      email:     (!dirtyFields.personalInfo?.email     && isEmailEmpty)     ? (session.user.email ?? prev.email) : prev.email,
+      links: (prev.links?.length || dirtyFields.personalInfo?.links) ? prev.links : [
         { type: 'website', url: `https://${username}.dev` },
         { type: 'linkedin', url: `https://www.linkedin.com/in/${slug}` },
         { type: 'github', url: `https://github.com/${username}` },
@@ -239,7 +249,7 @@ export function useOnboarding(session: any) {
         ? { url: session.user.image, publicId: '' }
         : prev.image,
     });
-  }, [session, methods, isFormLoading]);
+  }, [session, methods, isFormLoading, dirtyFields]);
 
   // ── Auto-sync local base64 image to Cloudinary after login ──
   const syncingRef = useRef(false);
@@ -418,33 +428,34 @@ export function useOnboarding(session: any) {
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const { unsubscribe } = methods.watch((v) => {
+    const { unsubscribe } = methods.watch(() => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
       previewDebounceRef.current = setTimeout(() => {
         const { selectedMoreIds: smi, stepOrder: so } = previewMetaRef.current;
+        const v = methods.getValues();
         setDebouncedResumeData(buildResume({
-          personalInfo:    v.personalInfo as any,
-          experience:      (v.experience      ?? []) as any,
-          education:       (v.education       ?? []) as any,
+          personalInfo:    v.personalInfo,
+          experience:      v.experience      ?? [],
+          education:       v.education       ?? [],
           skills:          serializeSkills(v.skills ?? []),
-          projects:        (v.projects        ?? []) as any,
-          certificates:    (v.certificates    ?? []) as any,
-          coursework:      (v.coursework      ?? []) as any,
-          involvement:     (v.involvement     ?? []) as any,
-          awards:          (v.awards          ?? []) as any,
-          publications:    (v.publications    ?? []) as any,
-          references:      (v.references      ?? []) as any,
-          achievements:    (v.achievements    ?? []) as any,
-          languages:       (v.languages       ?? []) as any,
-          softskills:      (v.softskills      ?? []) as any,
-          internships:     (v.internships     ?? []) as any,
-          freelance:       (v.freelance       ?? []) as any,
-          leadership:      (v.leadership      ?? []) as any,
-          volunteering:    (v.volunteering    ?? []) as any,
-          hobbies:         (v.hobbies         ?? []) as any,
-          conferences:     (v.conferences     ?? []) as any,
-          patents:         (v.patents         ?? []) as any,
-          extracurricular: (v.extracurricular ?? []) as any,
+          projects:        v.projects        ?? [],
+          certificates:    v.certificates    ?? [],
+          coursework:      v.coursework      ?? [],
+          involvement:     v.involvement     ?? [],
+          awards:          v.awards          ?? [],
+          publications:    v.publications    ?? [],
+          references:      v.references      ?? [],
+          achievements:    v.achievements    ?? [],
+          languages:       v.languages       ?? [],
+          softskills:      v.softskills      ?? [],
+          internships:     v.internships     ?? [],
+          freelance:       v.freelance       ?? [],
+          leadership:      v.leadership      ?? [],
+          volunteering:    v.volunteering    ?? [],
+          hobbies:         v.hobbies         ?? [],
+          conferences:     v.conferences     ?? [],
+          patents:         v.patents         ?? [],
+          extracurricular: v.extracurricular ?? [],
           selectedMoreIds: smi,
           stepOrder:       so,
         }));
@@ -546,8 +557,13 @@ export function useOnboarding(session: any) {
       const oldIdx = prev.indexOf(active.id as string);
       let newIdx = prev.indexOf(over.id as string);
       if (oldIdx === -1) return prev;
-      // If over.id is not in stepOrder yet (e.g. a newly added section), append
-      if (newIdx === -1) return [...prev, active.id as string];
+      // If over.id is not in stepOrder yet (e.g. over 'more' step), move to the end
+      if (newIdx === -1) {
+        const result = arrayMove(prev, oldIdx, prev.length - 1);
+        const pIdx = result.indexOf('personal');
+        if (pIdx > 0) { result.splice(pIdx, 1); result.unshift('personal'); }
+        return result;
+      }
       if (newIdx === 0) newIdx = 1;
       const result = arrayMove(prev, oldIdx, newIdx);
       const pIdx = result.indexOf('personal');
@@ -683,7 +699,7 @@ export function useOnboarding(session: any) {
         localStorage.removeItem('resumeTemplateOptions');
         localStorage.removeItem('resumeTemplateId');
         setTemplateOptions(DEFAULT_TEMPLATE_OPTIONS);
-        setPreviewTemplate('template1');
+        setPreviewTemplate('template2');
         setVisitedSteps(new Set(['personal']));
         setActiveStep('personal');
         setConfirmModal(null);

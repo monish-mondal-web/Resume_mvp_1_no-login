@@ -14,13 +14,7 @@ function IconATS() {
     </svg>
   );
 }
-function IconAssist() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-    </svg>
-  );
-}
+
 function IconOptimize() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -101,13 +95,7 @@ export function CommandPalette({
       desc: 'See how well your resume performs with ATS systems',
       action: () => { onTabChange('ats-score'); onClose(); },
     },
-    {
-      id: 'smart-assist', group: 'AI Features',
-      Icon: IconAssist,
-      label: 'Smart Assist',
-      desc: 'Get AI-powered suggestions to improve your resume',
-      action: () => { onTabChange('smart-assist'); onClose(); },
-    },
+
     {
       id: 'optimize', group: 'AI Features',
       Icon: IconOptimize,
@@ -151,9 +139,13 @@ export function CommandPalette({
 
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setCursor(0);
-      setTimeout(() => inputRef.current?.focus(), 10);
+      const timeout = window.setTimeout(() => {
+        setQuery('');
+        setCursor(0);
+        inputRef.current?.focus();
+      }, 10);
+
+      return () => window.clearTimeout(timeout);
     }
   }, [isOpen]);
 
@@ -162,9 +154,7 @@ export function CommandPalette({
     el?.scrollIntoView({ block: 'nearest' });
   }, [cursor]);
 
-  useEffect(() => {
-    setCursor(v => Math.min(v, Math.max(0, visibleItems.length - 1)));
-  }, [visibleItems.length]);
+  const safeCursor = Math.min(cursor, Math.max(0, visibleItems.length - 1));
 
   const execute = useCallback((idx: number) => {
     visibleItems[idx]?.action();
@@ -173,9 +163,9 @@ export function CommandPalette({
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(v => Math.min(v + 1, visibleItems.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(v => Math.max(v - 1, 0)); }
-    else if (e.key === 'Enter')   { e.preventDefault(); execute(cursor); }
+    else if (e.key === 'Enter')   { e.preventDefault(); execute(safeCursor); }
     else if (e.key === 'Escape')  onClose();
-  }, [cursor, visibleItems.length, execute, onClose]);
+  }, [safeCursor, visibleItems.length, execute, onClose]);
 
   if (!isOpen) return null;
 
@@ -221,7 +211,7 @@ export function CommandPalette({
                 {group}
               </p>
               {cmds.map(cmd => {
-                const isActive = cmd.idx === cursor;
+                const isActive = cmd.idx === safeCursor;
                 return (
                   <button
                     key={cmd.id}
@@ -271,7 +261,9 @@ export function CommandPalette({
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
               </svg>
-              <p className="text-[13px] font-medium text-slate-500">No results for "{query}"</p>
+              <p className="text-[13px] font-medium text-slate-500">
+                No results for &quot;{query}&quot;
+              </p>
             </div>
           )}
         </div>

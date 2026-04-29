@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/static-components */
+
 import React from 'react';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
@@ -151,7 +153,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
   const SectionHeader = ({ label }: { label: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5, marginTop: 2 }}>
       <h2 style={{
-        fontSize: fs - 1, fontWeight: 700, letterSpacing: '0.1em', color: '#111827',
+        fontSize: fs - 1, fontWeight: 700, color: '#111827',
         textTransform: 'uppercase', whiteSpace: 'nowrap', marginRight: 8, flexShrink: 0,
         lineHeight: 1.2, fontFamily: headFont,
       }}>
@@ -276,7 +278,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
                   <span style={{ fontSize: fs, fontWeight: 700, color: '#111827' }}>
                     {e.degree}{e.fieldOfStudy ? ` in ${e.fieldOfStudy}` : ''}
                   </span>
-                  {e.gpa && <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>CGPA: {e.gpa}</span>}
+                  {e.gpa && <span style={{ fontSize: fs - 1.5, color: '#4b5563', fontStyle: 'italic', flexShrink: 0 }}>{e.gpaType === 'percentage' ? `Percentage: ${e.gpa}%` : `CGPA: ${e.gpa}`}</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
                   <span style={{ fontSize: fs - 0.5, fontStyle: 'italic', color: '#374151' }}>{e.school}</span>
@@ -568,13 +570,15 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
         {options.showPhoto && personal.image?.url && (
           <div style={{
             width: imgPx, height: imgPx, borderRadius: imgRadius, overflow: 'hidden',
-            border: `2px solid ${accent}`, marginBottom: 6, marginLeft: 'auto', marginRight: 'auto',
+            border: options.imageBorder !== false ? `2px solid ${accent}` : 'none',
+            marginBottom: 6, marginLeft: 'auto', marginRight: 'auto',
             flexShrink: 0,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={personal.image.url}
               alt="Profile"
+              loading="eager"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           </div>
@@ -582,7 +586,7 @@ export function Template1({ data, options, activeSection, onSectionClick }: Prop
 
         {/* Name */}
         <h1 style={{
-          fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em',
+          fontSize: 24, fontWeight: 800, color: '#0f172a',
           lineHeight: 1.1, margin: 0, fontFamily: headFont,
         }}>
           {personal.firstName} {personal.lastName}
