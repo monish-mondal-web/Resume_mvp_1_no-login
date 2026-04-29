@@ -19,6 +19,10 @@ const OptionsSchema = z.object({
   pagePadding:       z.enum(['narrow', 'normal', 'wide']).optional(),
   linkColor:         z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   lineWeight:        z.enum(['thin', 'normal', 'thick']).optional(),
+  headingFont:       z.enum(['sans', 'serif', 'mono', 'inter', 'georgia']).optional(),
+  showContactIcons:  z.boolean().optional(),
+  imageShape:        z.enum(['circle', 'rounded', 'square']).optional(),
+  imageSize:         z.enum(['sm', 'md', 'lg']).optional(),
 });
 
 const RequestSchema = z.object({
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       });
 
-      const waitUntil = options.fontFamily === 'inter' ? 'networkidle0' : 'domcontentloaded';
+      const waitUntil = (options.fontFamily === 'inter' || options.fontFamily === 'serif') ? 'networkidle0' : 'domcontentloaded';
       await page.setContent(html, { waitUntil, timeout: 20_000 });
 
       // Wait for fonts and images to finish loading
