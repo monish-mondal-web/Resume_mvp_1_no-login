@@ -19,7 +19,7 @@ export function HomeClient() {
   const router = useRouter();
 
   const handleStartBuilding = () => {
-    if (status === 'authenticated' && session?.user?.isProfileCompleted) {
+    if (status === 'authenticated') {
       router.push('/dashboard');
       return;
     }

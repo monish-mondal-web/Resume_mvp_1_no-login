@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { rateLimit, getIP, createRateLimitResponse } from '@/lib/security/limiter';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 
 // Must run in Node.js — Puppeteer requires native modules unavailable in Edge.
@@ -34,7 +37,18 @@ const RequestSchema = z.object({
 
 // ── POST /api/export/pdf ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // ── 1. Size guard (5 MB) ────────────────────────────────────────────────────
+  // ── 1. Auth check ──────────────────────────────────────────────────────────
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized. Please log in to download PDF.' }, { status: 401 });
+  }
+
+  // ── 2. Rate Limiting ────────────────────────────────────────────────────────
+  const ip = getIP(req);
+  const rl = rateLimit(ip, 'export:pdf', { limit: 5, windowMs: 60 * 1000 }); // 5 per min
+  if (!rl.success) return createRateLimitResponse(rl.resetAt);
+
+  // ── 3. Size guard (5 MB) ────────────────────────────────────────────────────
   const cl = req.headers.get('content-length');
   if (cl && parseInt(cl, 10) > 5_242_880) {
     return NextResponse.json({ error: 'Request body too large' }, { status: 413 });

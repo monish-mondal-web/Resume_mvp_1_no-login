@@ -321,6 +321,7 @@ export interface OnboardingLayoutProps {
   setActiveStep: (id: string) => void;
   confirmModal: ConfirmModalState;
   setConfirmModal: React.Dispatch<React.SetStateAction<ConfirmModalState>>;
+  isSyncing: boolean;
 }
 
 export function OnboardingLayout({
@@ -363,11 +364,29 @@ export function OnboardingLayout({
   setActiveStep,
   confirmModal,
   setConfirmModal,
+  isSyncing,
 }: OnboardingLayoutProps) {
   const [activeTab, setActiveTab] = useState<BuilderTab>('edit');
   const [cmdOpen, setCmdOpen]     = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [importCardVisible, setImportCardVisible] = useState(true);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Keyboard detection for mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    
+    const handleResize = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      // If viewport height significantly decreases, keyboard is likely up
+      const isUp = vv.height < window.innerHeight * 0.75;
+      setIsKeyboardVisible(isUp);
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    return () => window.visualViewport?.removeEventListener('resize', handleResize);
+  }, []);
 
   const atsScore = React.useMemo(
     () => debouncedResumeData ? computeATSScore(debouncedResumeData).score : undefined,
@@ -547,7 +566,8 @@ export function OnboardingLayout({
             </div>
 
             {/* Mobile unified bottom bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white lg:hidden">
+            {!isKeyboardVisible && (
+              <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white lg:hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
               <div className="px-4 pt-3 pb-2">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -584,13 +604,15 @@ export function OnboardingLayout({
                 ) : (
                   <button
                     onClick={handleContinue}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                    disabled={isLoading || isSyncing}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
                   >
                     Continue <FiArrowRight className="text-xs" />
                   </button>
                 )}
               </div>
             </div>
+          )}
 
             <div
               className={`fixed inset-0 z-40 bg-slate-950/45 transition-opacity duration-300 lg:hidden ${
@@ -775,7 +797,7 @@ export function OnboardingLayout({
                     </div>
 
                     {/* Scrollable form content */}
-                    <div className="flex-1 overflow-y-auto pb-[8.5rem] md:pb-0">
+                    <div className={`flex-1 overflow-y-auto transition-all duration-300 ${isKeyboardVisible ? 'pb-20' : 'pb-[8.5rem]'} md:pb-0`}>
                       {activeStep === 'personal' && importCardVisible && (
                         <div className="px-5 pt-6 sm:px-8 md:px-10">
                           <ResumeImportCard onDismiss={() => setImportCardVisible(false)} />
@@ -827,7 +849,8 @@ export function OnboardingLayout({
                         ) : (
                           <button
                             onClick={handleContinue}
-                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+                            disabled={isLoading || isSyncing}
+                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
                           >
                             Continue <FiArrowRight className="text-xs" />
                           </button>
@@ -926,6 +949,23 @@ export function OnboardingLayout({
         onTogglePreview={() => setShowPreview((p: boolean) => !p)}
         onExportPdf={() => {}}
       />
+      {/* Syncing overlay */}
+      {isSyncing && (
+        <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md transition-opacity">
+          <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-10 shadow-2xl ring-1 ring-white/10">
+            <div className="relative">
+              <div className="h-16 w-16 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <FiCheckCircle className="animate-pulse text-xl text-indigo-400" />
+              </div>
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-slate-900">Finalizing Profile</h2>
+              <p className="mt-2 text-sm text-slate-500">Syncing your data across devices...</p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

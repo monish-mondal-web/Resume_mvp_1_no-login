@@ -7,12 +7,9 @@ export default withAuth(
     const isAuth = !!token;
     const isAuthPage = req.nextUrl.pathname === '/'; // Landing is also the login page
 
-    // If logged in and trying to access landing page, go to dashboard
+    // If logged in and trying to access landing page, always go to dashboard
     if (isAuthPage && isAuth) {
-      if (token.isProfileCompleted) {
-        return NextResponse.redirect(new URL('/dashboard', req.url));
-      }
-      return NextResponse.redirect(new URL('/resume/builder', req.url));
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
     return NextResponse.next();

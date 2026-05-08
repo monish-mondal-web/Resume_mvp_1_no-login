@@ -19,7 +19,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ message: 'Invalid or missing JSON body' }, { status: 400 });
+    }
     
     // ── Validation ──
     const validation = OnboardingSchema.safeParse(body);

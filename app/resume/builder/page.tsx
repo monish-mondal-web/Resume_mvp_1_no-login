@@ -11,9 +11,5 @@ export const metadata = {
 export default async function ResumeBuilderPage() {
   const session = await getServerSession(authOptions);
 
-  if (session?.user?.isProfileCompleted) {
-    redirect('/dashboard');
-  }
-
   return <RefactoredOnboardingClient />;
 }

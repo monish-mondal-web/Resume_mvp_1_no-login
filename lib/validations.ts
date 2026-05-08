@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 // ── Shared schemas ──
 const ImageSchema = z.object({
-  url: z.string().url(),
+  url: z.string().refine(val => {
+    return val.startsWith('http') || val.startsWith('data:image') || val.startsWith('/');
+  }, { message: 'Invalid image source' }),
   publicId: z.string().optional().or(z.literal('')),
 }).nullable();
 

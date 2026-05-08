@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['10.173.61.66'],
+  allowedDevOrigins: ['10.99.209.66'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import type { Session } from 'next-auth';
+import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -69,7 +69,7 @@ function safeLocalGet<T>(key: string, def: T): T {
   }
 }
 
-function buildDefaultPersonalInfo(session: Session | null) {
+function buildDefaultPersonalInfo(session: any) {
   const fname = session?.user?.name?.split(' ')[0] || 'Rahul';
   const lname = session?.user?.name?.split(' ').slice(1).join(' ') || 'Sharma';
   const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
@@ -93,7 +93,8 @@ function buildDefaultPersonalInfo(session: Session | null) {
   };
 }
 
-export function useOnboarding(session: Session | null) {
+export function useOnboarding() {
+  const { data: session, update } = useSession();
   const router = useRouter();
 
   // ── Hydration guard ──
@@ -116,6 +117,7 @@ export function useOnboarding(session: Session | null) {
 
   // ── UI state ──
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [stepsDrawerOpen, setStepsDrawerOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
@@ -575,10 +577,11 @@ export function useOnboarding(session: Session | null) {
 
   // ── Navigation ──
   const handleContinue = useCallback(() => {
+    if (isLoading || isSyncing) return;
     if (currentIndex < allSteps.length - 1) {
       setActiveStep(allSteps[currentIndex + 1].id);
     }
-  }, [currentIndex, allSteps]);
+  }, [currentIndex, allSteps, isLoading, isSyncing]);
 
   // ── Toggle more sections ──
   const toggleMoreSection = useCallback((id: string) => {
@@ -601,6 +604,7 @@ export function useOnboarding(session: Session | null) {
 
   // ── Complete (submit) ──
   const handleComplete = useCallback(async () => {
+    if (isLoading || isSyncing) return;
     if (!session) { setIsAuthModalOpen(true); return; }
     setIsLoading(true);
     try {
@@ -631,25 +635,50 @@ export function useOnboarding(session: Session | null) {
           extracurricular: values.extracurricular,
         },
       };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
       const res = await fetch('/api/user/complete-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (res.ok) {
-        localStorage.removeItem(STORAGE_KEY);
-        toast.success('Profile saved!');
-        // update NextAuth session
-        router.push('/dashboard');
+        setIsSyncing(true);
+        toast.success('Profile saved! Finalizing session...');
+        
+        try {
+          if (update) {
+            // Wait for session update to propagate
+            await update({ isProfileCompleted: true });
+          }
+          // Only clear storage after successful save + sync
+          localStorage.removeItem(STORAGE_KEY);
+          router.push('/dashboard');
+        } catch (syncError) {
+          console.error('Session sync failed:', syncError);
+          // Fallback redirect even if sync fails (API was successful)
+          router.push('/dashboard');
+        } finally {
+          setIsSyncing(false);
+        }
       } else {
-        toast.error('Failed to save profile');
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || 'Failed to save profile');
       }
-    } catch {
-      toast.error('Failed to save');
+    } catch (err: any) {
+      console.error('Save error:', err);
+      if (err.name === 'AbortError') {
+        toast.error('Request timed out. Please check your internet and try again.');
+      } else {
+        toast.error('Network error or server failure. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [session, methods, router]);
+  }, [session, update, methods, router]);
 
   // ── Reset ──
   const handleReset = useCallback(() => {
@@ -764,5 +793,6 @@ export function useOnboarding(session: Session | null) {
     handleReset,
     toggleMoreSection,
     onTogglePhoto,
+    isSyncing,
   };
 }

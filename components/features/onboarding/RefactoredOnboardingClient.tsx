@@ -42,7 +42,8 @@ export function RefactoredOnboardingClient() {
     handleReset,
     toggleMoreSection,
     onTogglePhoto,
-  } = useOnboarding(session);
+    isSyncing,
+  } = useOnboarding();
 
   const ActiveForm = formRegistry[activeStep] ?? formRegistry['personal'];
 
@@ -96,6 +97,7 @@ export function RefactoredOnboardingClient() {
           redo={redo}
           confirmModal={confirmModal}
           setConfirmModal={setConfirmModal}
+          isSyncing={isSyncing}
         >
           <ActiveForm />
         </OnboardingLayout>

@@ -3,6 +3,9 @@
 import { signOut } from 'next-auth/react';
 import { FaCrown, FaDiscord } from 'react-icons/fa';
 import { FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
+import { usePricingModal } from '@/hooks/usePricingModal';
+import { FREE_QUOTAS } from '@/lib/quota-config';
+import type { QuotaItem } from '@/lib/quota-config';
 
 type AccountMenuProps = {
   userInitial: string;
@@ -15,6 +18,8 @@ export function AccountMenu({
   userName,
   onClose,
 }: AccountMenuProps) {
+  const { openModal } = usePricingModal();
+
   return (
     <div
       role="menu"
@@ -34,20 +39,44 @@ export function AccountMenu({
         </div>
       </div>
 
-      <div className="px-4 py-1.5">
-        <div className="mb-1.5 flex cursor-pointer items-center justify-between transition-opacity hover:opacity-80">
-          <span className="text-xs font-medium text-gray-700">
-            Resume credits
-          </span>
-          <span className="text-xs text-gray-400">8/10 left</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-          <div className="h-full w-[80%] bg-indigo-600" />
+      {/* Per-feature quota */}
+      <div className="px-4 pt-1 pb-2">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">Credits · Free Plan</p>
+        <div className="space-y-2">
+          {FREE_QUOTAS.map((q: QuotaItem) => {
+            const isUnlimited = q.limit === null;
+            const pct = isUnlimited ? 100 : q.limit! > 0 ? Math.round((q.used / q.limit!) * 100) : 0;
+            const exhausted = !isUnlimited && q.used >= (q.limit ?? 0);
+            return (
+              <div key={q.id}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[11px] text-gray-600">{q.label}</span>
+                  <span className={`text-[10px] font-semibold tabular-nums ${
+                    exhausted ? 'text-red-400' : isUnlimited ? 'text-emerald-500' : 'text-gray-400'
+                  }`}>
+                    {isUnlimited ? '∞' : `${q.used}/${q.limit}`}
+                  </span>
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className={`h-full rounded-full ${
+                      exhausted ? 'bg-red-400' : isUnlimited ? 'bg-emerald-400' : 'bg-indigo-500'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="px-3 py-2">
-        <div className="flex cursor-pointer items-center justify-between rounded-xl bg-indigo-600 p-2.5 shadow-sm transition-opacity hover:bg-indigo-700">
+        <button
+          type="button"
+          onClick={() => { onClose(); openModal(); }}
+          className="flex w-full cursor-pointer items-center justify-between rounded-xl bg-indigo-600 p-2.5 transition-opacity hover:bg-indigo-700 active:scale-[0.98]"
+        >
           <div className="flex items-center gap-2 text-white">
             <FaCrown className="text-sm text-indigo-100" />
             <span className="text-xs font-semibold tracking-wide">Pro Resume</span>
@@ -55,7 +84,7 @@ export function AccountMenu({
           <span className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
             Upgrade
           </span>
-        </div>
+        </button>
       </div>
 
       <AccountMenuItems onClose={onClose} />

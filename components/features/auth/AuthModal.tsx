@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { signIn, getSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { FiEye, FiEyeOff, FiX } from 'react-icons/fi';
@@ -280,12 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         toast.error(signInRes.error || 'Login failed after verification');
       } else {
         onClose();
-        const session = await getSession();
-        if (session?.user?.isProfileCompleted) {
-          router.push('/dashboard');
-        } else {
-          router.push('/resume/builder');
-        }
+        router.push('/dashboard');
       }
     } catch {
       toast.error('An error occurred during verification');
@@ -390,12 +385,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       } else {
         toast.success('Successfully logged in!');
         onClose();
-        const session = await getSession();
-        if (session?.user?.isProfileCompleted) {
-          router.push('/dashboard');
-        } else {
-          router.push('/resume/builder');
-        }
+        router.push('/dashboard');
       }
     } catch {
       toast.error('An error occurred');

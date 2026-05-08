@@ -8,6 +8,8 @@ import { FiArrowRight, FiChevronDown, FiChevronRight, FiMenu, FiX } from 'react-
 import { AccountMenu, AccountMenuItems } from './AccountMenu';
 import { BrandLogo } from './BrandLogo';
 import { navLinks } from './home.constants';
+import { usePricingModal } from '@/hooks/usePricingModal';
+import { FREE_QUOTAS } from '@/lib/quota-config';
 
 interface NavbarProps {
   onLoginClick?: () => void;
@@ -24,6 +26,7 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
   const userInitial =
     session?.user?.name?.[0] || session?.user?.email?.[0] || 'U';
   const userSecondaryText = session?.user?.email || 'Resume Builder';
+  const { openModal: openPricingModal } = usePricingModal();
 
   const handlePrimaryAction = () => {
     if (session) {
@@ -228,7 +231,8 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
                   <div className="space-y-3">
                     <button
                       type="button"
-                      className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700"
+                      onClick={() => { handleCloseMobileMenu(); openPricingModal(); }}
+                      className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98]"
                     >
                       <span className="flex items-center gap-2">
                         <FaCrown className="text-sm text-indigo-100" />
@@ -273,16 +277,29 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
                       >
                         <div className="overflow-hidden border-t border-slate-200 bg-white">
                           <div className="px-4 py-3">
-                            <div className="mb-2 flex items-center justify-between">
-                              <span className="text-xs font-medium text-slate-700">
-                                Resume credits
-                              </span>
-                              <span className="text-xs text-slate-400">
-                                8/10 left
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                              <div className="h-full w-[80%] rounded-full bg-indigo-600" />
+                            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Credits · Free Plan</p>
+                            <div className="space-y-2">
+                              {FREE_QUOTAS.map((q) => {
+                                const isUnlimited = q.limit === null;
+                                const pct = isUnlimited ? 100 : q.limit! > 0 ? Math.round((q.used / q.limit!) * 100) : 0;
+                                const exhausted = !isUnlimited && q.used >= (q.limit ?? 0);
+                                return (
+                                  <div key={q.id}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <span className="text-[11px] text-slate-600">{q.label}</span>
+                                      <span className={`text-[10px] font-semibold tabular-nums ${exhausted ? 'text-red-400' : isUnlimited ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                        {isUnlimited ? '∞' : `${q.used}/${q.limit}`}
+                                      </span>
+                                    </div>
+                                    <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100">
+                                      <div
+                                        className={`h-full rounded-full ${exhausted ? 'bg-red-400' : isUnlimited ? 'bg-emerald-400' : 'bg-indigo-500'}`}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 
