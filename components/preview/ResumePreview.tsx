@@ -21,6 +21,7 @@ import {
   FiCornerUpLeft, FiCornerUpRight,
   FiEdit2, FiMaximize as FiMaximizeIcon,
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 // A4 at 96 dpi: 210mm × 297mm → 794 × 1123 px
 const A4_W     = A4_WIDTH_PX;
@@ -483,8 +484,20 @@ export function ResumePreview({
         const { downloadAsPDF } = await import('@/lib/exportResume');
         await downloadAsPDF(data, templateId, templateOptions, `${name}.pdf`, pageBreaks);
       }
-    } catch (err) { console.error('Export failed:', err); }
-    finally { setIsExporting(false); }
+    } catch (err) {
+      console.error('Export failed:', err);
+      toast.error('Server not working due to heavy load. Please try again in a moment.', {
+        duration: 5000,
+        style: {
+          background: '#1e293b',
+          color: '#f8fafc',
+          borderRadius: '10px',
+          fontSize: '13px',
+          padding: '12px 16px',
+        },
+        iconTheme: { primary: '#f87171', secondary: '#fff' },
+      });
+    } finally { setIsExporting(false); }
   };
 
   return (

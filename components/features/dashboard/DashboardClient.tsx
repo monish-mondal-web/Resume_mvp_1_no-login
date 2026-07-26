@@ -10,6 +10,7 @@ import { Navbar } from '@/components/features/home/Navbar';
 import { DashboardSidebar } from './DashboardSidebar';
 import { ResumeGrid } from './ResumeGrid';
 import { QuickActions } from './QuickActions';
+import toast from 'react-hot-toast';
 
 export interface StoredResume {
   data: ResumeData;
@@ -63,7 +64,17 @@ export function DashboardClient({ userName, userEmail }: Props) {
         `${resume.name.replace(/\s+/g, '_')}.pdf`,
       );
     } catch {
-      alert('PDF export failed. Please try again.');
+      toast.error('Server not working due to heavy load. Please try again in a moment.', {
+        duration: 5000,
+        style: {
+          background: '#1e293b',
+          color: '#f8fafc',
+          borderRadius: '10px',
+          fontSize: '13px',
+          padding: '12px 16px',
+        },
+        iconTheme: { primary: '#f87171', secondary: '#fff' },
+      });
     } finally {
       setDownloading(false);
     }
