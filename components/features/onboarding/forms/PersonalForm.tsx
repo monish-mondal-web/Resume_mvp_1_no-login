@@ -26,6 +26,49 @@ const SOCIAL_PLATFORMS = [
   { id: 'custom',   label: 'Custom',       icon: <FiExternalLink />, placeholder: 'https://example.com' },
 ];
 
+function ComingSoonModal({ title, description, onClose }: { title: string; description: string; onClose: () => void }) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex w-full max-w-sm flex-col items-center rounded-2xl bg-white p-6 text-center shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+        >
+          <FiX className="text-sm" />
+        </button>
+
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+          <FiLock className="text-xl" />
+        </div>
+
+        <span className="mb-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+          Coming Soon
+        </span>
+
+        <h3 className="text-base font-bold text-slate-800">{title}</h3>
+        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+          {description}
+        </p>
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+        >
+          Got it
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function ImageUploadModal({ onUploaded, onClose }: {
   currentPublicId?: string;
   onUploaded: (url: string, publicId: string) => void;
@@ -161,42 +204,11 @@ function ImageUploadModal({ onUploaded, onClose }: {
       </div>
 
       {showAiHeadshotComingSoon && (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
-          onClick={() => setShowAiHeadshotComingSoon(false)}
-        >
-          <div
-            className="relative flex w-full max-w-sm flex-col items-center rounded-2xl bg-white p-6 text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowAiHeadshotComingSoon(false)}
-              className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            >
-              <FiX className="text-sm" />
-            </button>
-
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-              <FiLock className="text-xl" />
-            </div>
-
-            <span className="mb-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-              Coming Soon
-            </span>
-
-            <h3 className="text-base font-bold text-slate-800">AI Headshot Generator</h3>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-              Our AI studio headshot feature is under development. Soon you will be able to generate professional studio-quality headshots automatically!
-            </p>
-
-            <button
-              onClick={() => setShowAiHeadshotComingSoon(false)}
-              className="mt-5 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
+        <ComingSoonModal
+          title="AI Headshot Generator"
+          description="Our AI studio headshot feature is under development. Soon you will be able to generate professional studio-quality headshots automatically!"
+          onClose={() => setShowAiHeadshotComingSoon(false)}
+        />
       )}
     </div>,
     document.body
@@ -283,42 +295,11 @@ export function PersonalForm() {
       </div>
 
       {aiHeadshotComingSoon && (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
-          onClick={() => setAiHeadshotComingSoon(false)}
-        >
-          <div
-            className="relative flex w-full max-w-sm flex-col items-center rounded-2xl bg-white p-6 text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setAiHeadshotComingSoon(false)}
-              className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            >
-              <FiX className="text-sm" />
-            </button>
-
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-              <FiLock className="text-xl" />
-            </div>
-
-            <span className="mb-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-              Coming Soon
-            </span>
-
-            <h3 className="text-base font-bold text-slate-800">AI Headshot Generator</h3>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-              Our AI studio headshot feature is under development. Soon you will be able to generate professional studio-quality headshots automatically!
-            </p>
-
-            <button
-              onClick={() => setAiHeadshotComingSoon(false)}
-              className="mt-5 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
+        <ComingSoonModal
+          title="AI Headshot Generator"
+          description="Our AI studio headshot feature is under development. Soon you will be able to generate professional studio-quality headshots automatically!"
+          onClose={() => setAiHeadshotComingSoon(false)}
+        />
       )}
 
       {/* Photo visibility toggle */}
