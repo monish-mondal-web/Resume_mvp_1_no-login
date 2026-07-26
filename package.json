@@ -22,7 +22,7 @@
     "mongoose": "^9.4.1",
     "next": "16.2.4",
     "puppeteer": "^22.15.0",
-    "puppeteer-core": "^25.3.0",
+    "puppeteer-core": "22.15.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.73.1",
