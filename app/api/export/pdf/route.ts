@@ -84,33 +84,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const page = await browser.newPage();
 
     try {
-      await page.setRequestInterception(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      page.on('request', (r: any) => {
-        const type: string = r.resourceType();
-        if (['document', 'stylesheet', 'font', 'image'].includes(type)) {
-          r.continue();
-        } else {
-          r.abort();
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+
+      await page.evaluate(async () => {
+        if (document.fonts) {
+          await document.fonts.ready.catch(() => {});
         }
       });
 
-      const usesRemoteFont = [options.fontFamily, options.headingFont]
-        .some((font) => font === 'inter' || font === 'serif');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const waitUntil: any = usesRemoteFont ? 'networkidle0' : 'domcontentloaded';
-      await page.setContent(html, { waitUntil, timeout: 20_000 });
-
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-      });
       await page.evaluate(() =>
         Promise.all(
           Array.from(document.images)
-            .filter(img => !img.complete)
-            .map(img => new Promise<void>(res => { img.onload = img.onerror = () => res(); }))
+            .filter((img) => !img.complete)
+            .map((img) => new Promise<void>((res) => { img.onload = img.onerror = () => res(); }))
         )
-      );
+      ).catch(() => {});
 
       const pdfBuffer = await page.pdf({
         format:              'A4',
@@ -130,12 +118,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
       });
     } finally {
-      await page.close();
+      await page.close().catch(() => {});
     }
   } catch (err) {
-    console.error('[pdf/export] Error:', err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[pdf/export] Error details:', errorMsg);
     return NextResponse.json(
-      { error: 'PDF generation failed. Please try again.' },
+      { error: `PDF generation failed: ${errorMsg}` },
       { status: 500 },
     );
   }

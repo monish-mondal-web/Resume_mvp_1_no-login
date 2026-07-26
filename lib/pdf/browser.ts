@@ -26,12 +26,22 @@ async function spawn(): Promise<Browser> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chromium = (await import('@sparticuz/chromium')).default as any;
     const puppeteer = (await import('puppeteer-core')).default;
-    const executablePath = await chromium.executablePath();
+
+    let executablePath: string;
+    try {
+      executablePath = await chromium.executablePath();
+    } catch (e) {
+      console.warn('[pdf/browser] Local chromium binary resolution failed, using remote release fallback:', e);
+      executablePath = await chromium.executablePath(
+        'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
+      );
+    }
+
     const b = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      args: [...(chromium.args || []), '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
       executablePath,
-      headless: chromium.headless,
+      headless: chromium.headless ?? true,
     });
     _browser = b as unknown as Browser;
   } else {
@@ -44,12 +54,21 @@ async function spawn(): Promise<Browser> {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chromium = (await import('@sparticuz/chromium')).default as any;
       const puppeteer = (await import('puppeteer-core')).default;
-      const executablePath = await chromium.executablePath();
+      
+      let executablePath: string;
+      try {
+        executablePath = await chromium.executablePath();
+      } catch {
+        executablePath = await chromium.executablePath(
+          'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
+        );
+      }
+
       const b = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
+        args: [...(chromium.args || []), '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+        defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
         executablePath,
-        headless: chromium.headless,
+        headless: chromium.headless ?? true,
       });
       _browser = b as unknown as Browser;
     }
