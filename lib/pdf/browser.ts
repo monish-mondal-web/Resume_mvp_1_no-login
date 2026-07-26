@@ -1,11 +1,16 @@
 import type { Browser } from 'puppeteer-core';
 
 // Module-level singleton — reused across requests in long-running Node.js processes.
-// Supports both local Node.js and Vercel/Lambda serverless execution.
+// Uses @sparticuz/chromium-min (no bundled binary) with remote binary URL for Vercel/serverless.
+// Falls back to local puppeteer in development.
 let _browser: Browser | null = null;
 let _launch: Promise<Browser> | null = null;
 
-const ARGS = [
+// Chromium v149 remote binary — downloaded to /tmp at runtime on serverless.
+const CHROMIUM_REMOTE_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar';
+
+const LOCAL_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
@@ -23,55 +28,33 @@ async function spawn(): Promise<Browser> {
   );
 
   if (isServerless) {
+    // Use chromium-min (no bundled binary) — always download remote binary at runtime.
+    // This keeps the serverless function bundle under Vercel's 50 MB limit.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chromium = (await import('@sparticuz/chromium')).default as any;
+    const chromium = (await import('@sparticuz/chromium-min')).default as any;
     const puppeteer = (await import('puppeteer-core')).default;
 
-    let executablePath: string;
-    try {
-      executablePath = await chromium.executablePath();
-    } catch (e) {
-      console.warn('[pdf/browser] Local chromium binary resolution failed, using remote release fallback:', e);
-      executablePath = await chromium.executablePath(
-        'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
-      );
-    }
+    const executablePath = await chromium.executablePath(CHROMIUM_REMOTE_URL);
 
     const b = await puppeteer.launch({
-      args: [...(chromium.args || []), '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
-      defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
+      args: [
+        ...chromium.args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+      ],
+      defaultViewport: chromium.defaultViewport ?? { width: 1240, height: 1754 },
       executablePath,
       headless: chromium.headless ?? true,
     });
     _browser = b as unknown as Browser;
   } else {
-    try {
-      const puppeteer = (await import('puppeteer')).default;
-      const b = await puppeteer.launch({ headless: true, args: ARGS });
-      _browser = b as unknown as Browser;
-    } catch {
-      // Fallback to puppeteer-core + @sparticuz/chromium if local puppeteer binary is not found
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chromium = (await import('@sparticuz/chromium')).default as any;
-      const puppeteer = (await import('puppeteer-core')).default;
-      
-      let executablePath: string;
-      try {
-        executablePath = await chromium.executablePath();
-      } catch {
-        executablePath = await chromium.executablePath(
-          'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
-        );
-      }
-
-      const b = await puppeteer.launch({
-        args: [...(chromium.args || []), '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
-        defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
-        executablePath,
-        headless: chromium.headless ?? true,
-      });
-      _browser = b as unknown as Browser;
-    }
+    // Local development — use regular puppeteer with bundled Chromium.
+    const puppeteer = (await import('puppeteer')).default;
+    const b = await puppeteer.launch({ headless: true, args: LOCAL_ARGS });
+    _browser = b as unknown as Browser;
   }
 
   _browser.once('disconnected', () => {
@@ -92,4 +75,3 @@ export async function getBrowser(): Promise<Browser> {
   }
   return _launch;
 }
-
