@@ -97,7 +97,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const usesRemoteFont = [options.fontFamily, options.headingFont]
         .some((font) => font === 'inter' || font === 'serif');
-      const waitUntil = usesRemoteFont ? 'networkidle0' : 'domcontentloaded';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const waitUntil: any = usesRemoteFont ? 'networkidle0' : 'domcontentloaded';
       await page.setContent(html, { waitUntil, timeout: 20_000 });
 
       await page.evaluate(async () => {

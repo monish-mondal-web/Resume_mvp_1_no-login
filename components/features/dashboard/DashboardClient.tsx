@@ -5,6 +5,7 @@ import type { ATSResult } from '@/lib/resume-builder';
 import { computeATSScore } from '@/lib/resume-builder';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 import { DEFAULT_TEMPLATE_OPTIONS } from '@/types/resume.types';
+import { downloadAsPDF } from '@/lib/exportResume';
 import { Navbar } from '@/components/features/home/Navbar';
 import { DashboardSidebar } from './DashboardSidebar';
 import { ResumeGrid } from './ResumeGrid';
@@ -23,25 +24,27 @@ interface Props {
 }
 
 export function DashboardClient({ userName, userEmail }: Props) {
-  const [resume, setResume]           = useState<StoredResume | null>(null);
+  const [activeTab, setActiveTab] = useState('resumes');
+  const [resume, setResume]       = useState<StoredResume | null>(null);
   const [mounted, setMounted]         = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     try {
-      const raw = localStorage.getItem('fr-resume-built');
-      if (!raw) return;
-      const data       = JSON.parse(raw) as ResumeData;
-      const templateId = (localStorage.getItem('resumeTemplateId') as TemplateId) ?? 'template2';
-      const optRaw     = localStorage.getItem('resumeTemplateOptions');
-      const options    = optRaw ? JSON.parse(optRaw) : DEFAULT_TEMPLATE_OPTIONS;
-      const { firstName = '', lastName = '' } = data.personal ?? {};
-      const name = [firstName, lastName].filter(Boolean).join(' ')
-        ? `${firstName} ${lastName} — Resume`
-        : 'My Resume';
-      setResume({ data, templateId, options, name });
-    } catch {}
+      const raw = localStorage.getItem('fresh_resume_draft');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<StoredResume>;
+        if (parsed.data) {
+          setResume({
+            data:       parsed.data,
+            templateId: parsed.templateId ?? 'template1',
+            options:    parsed.options ?? DEFAULT_TEMPLATE_OPTIONS,
+            name:       parsed.name ?? 'My Resume',
+          });
+        }
+      }
+    } catch { /* parse error ignored */ }
   }, []);
 
   const atsResult = useMemo<ATSResult | null>(
@@ -53,20 +56,12 @@ export function DashboardClient({ userName, userEmail }: Props) {
     if (!resume) return;
     setDownloading(true);
     try {
-      const res = await fetch('/api/export/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: resume.data, templateId: resume.templateId, options: resume.options }),
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = Object.assign(document.createElement('a'), {
-        href: url,
-        download: `${resume.name.replace(/\s+/g, '_')}.pdf`,
-      });
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadAsPDF(
+        resume.data,
+        resume.templateId,
+        resume.options,
+        `${resume.name.replace(/\s+/g, '_')}.pdf`,
+      );
     } catch {
       alert('PDF export failed. Please try again.');
     } finally {
