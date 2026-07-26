@@ -159,7 +159,7 @@ export interface FreelanceEntry {
   client: string;
   start: string;
   end: string;
-  currentlyWorking: boolean;
+  currentlyWorking?: boolean;
   description: string;
   isHidden?: boolean;
 }
@@ -195,15 +195,18 @@ export interface InterestEntry {
 export interface ConferenceEntry {
   id: string;
   title: string;
-  organizer: string;
+  role?: string;
+  organizer?: string;
   date: string;
-  description: string;
+  location?: string;
+  description?: string;
   isHidden?: boolean;
 }
 
 export interface PatentEntry {
   id: string;
   title: string;
+  number?: string;
   issuer: string;
   date: string;
   url: string;

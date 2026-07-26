@@ -38,7 +38,7 @@ export function VolunteeringForm() {
       )}
       <AddButton
         label={fields.length === 0 ? 'Add volunteering work' : 'Add another experience'}
-        onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', description: '', isHidden: false })}
+        onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', current: false, description: '', isHidden: false })}
       />
     </div>
   );

@@ -5,11 +5,12 @@ export async function downloadAsPDF(
   templateId: TemplateId,
   options: TemplateOptions,
   filename = 'resume.pdf',
+  pageBreaks: number[] = [],
 ): Promise<void> {
   const res = await fetch('/api/export/pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data, templateId, options }),
+    body: JSON.stringify({ data, templateId, options, pageBreaks }),
   });
 
   if (!res.ok) {

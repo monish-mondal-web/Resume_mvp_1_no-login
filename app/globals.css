@@ -12,6 +12,56 @@
     color: var(--color-text);
   }
 }
+
+/* Resume pages use horizontal CSS columns as real page fragments. */
+[data-resume-layout='columns'] > [data-section] {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+[data-resume-layout='columns'] > :not([data-section]) {
+  break-before: avoid-column;
+  -webkit-column-break-before: avoid;
+}
+
+[data-resume-layout='columns'] h2 {
+  break-after: avoid-column;
+  -webkit-column-break-after: avoid;
+}
+
+@keyframes shineSweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  40%, 100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  animation: shineSweep 2.5s infinite ease-in-out;
+  pointer-events: none;
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

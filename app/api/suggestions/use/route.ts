@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 import dbConnect from '@/lib/mongodb';
 import Suggestion from '@/models/Suggestion';
 import { rateLimit, getIP, createRateLimitResponse } from '@/lib/security/limiter';
@@ -28,12 +30,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { value, type } = parsed.data;
-
-  await dbConnect();
-
   const normalizedValue = value.toLowerCase();
 
   try {
+    await dbConnect();
     await Suggestion.findOneAndUpdate(
       { normalizedValue, type },
       { 
@@ -43,8 +43,7 @@ export async function POST(req: NextRequest) {
       { upsert: true }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to update suggestion usage';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.warn('Failed to update suggestion usage in DB:', error instanceof Error ? error.message : error);
   }
 
   // Invalidate ONLY the specific type's cache to keep other suggestions fast

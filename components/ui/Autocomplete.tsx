@@ -42,10 +42,9 @@ function highlight(text: string, query: string) {
 
 async function apiFetch(type: SuggestionType, q: string): Promise<Suggestion[]> {
   const normalizedQ = (q || '').toLowerCase();
-  const cacheKey = `${type}:${normalizedQ}`;
+  const cacheKey = `${type}:${normalizedQ || '__top__'}`;
   const hit = memCache.get(cacheKey);
   if (hit && Date.now() - hit.ts < MEM_TTL) return hit.data;
-  if (!normalizedQ) return [];
 
   const url = `/api/suggestions?type=${type}&q=${encodeURIComponent(normalizedQ)}&limit=8`;
   const res = await fetch(url);

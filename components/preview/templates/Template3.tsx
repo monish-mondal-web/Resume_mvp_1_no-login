@@ -1,14 +1,14 @@
-'use client';
-
 import React from 'react';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
+import type { ResumePageRenderLayout } from '@/lib/resumePageLayout';
 
 interface Props {
   data: ResumeData;
   options: TemplateOptions;
   activeSection?: string;
   onSectionClick?: (sectionId: string) => void;
+  pageLayout?: ResumePageRenderLayout;
 }
 
 const V = <T extends { isHidden?: boolean }>(arr: T[] | undefined): T[] =>
@@ -68,7 +68,7 @@ function getLinkIcon3(type: string) {
 }
 
 // Professional Executive template — centered header with accent title, dot contacts, prominent sections
-export function Template3({ data, options, activeSection, onSectionClick }: Props) {
+export function Template3({ data, options, activeSection, onSectionClick, pageLayout }: Props) {
   const {
     personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null },
     experience = [], education = [], skills = [], sectionOrder = [], enabledSections = [],
@@ -84,9 +84,29 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
   const showIcons  = options.showContactIcons !== false;
   const imgPx      = options.imageSize === 'sm' ? 56 : options.imageSize === 'lg' ? 88 : 72;
   const imgRadius  = options.imageShape === 'square' ? 4 : options.imageShape === 'rounded' ? 12 : '50%';
+  const pageStyle: React.CSSProperties = pageLayout?.mode === 'columns'
+    ? {
+        width: pageLayout.contentWidth,
+        height: pageLayout.contentHeight,
+        minHeight: pageLayout.contentHeight,
+        padding: 0,
+        columnWidth: pageLayout.contentWidth,
+        columnGap: 0,
+        columnFill: 'auto',
+      }
+    : pageLayout?.mode === 'print'
+      ? { width: '100%', minHeight: 0, padding: 0 }
+      : { minHeight: '100%', padding: pad };
 
   const ring = (id: string): React.CSSProperties =>
-    activeSection === id ? { outline: `2px solid ${accent}`, outlineOffset: 2, borderRadius: 3 } : {};
+    activeSection === id
+      ? {
+          boxShadow: `inset 0 0 0 2px ${accent}`,
+          borderRadius: 3,
+          boxDecorationBreak: 'clone',
+          WebkitBoxDecorationBreak: 'clone',
+        }
+      : {};
   const click = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); onSectionClick?.(id); };
 
   // Professional: larger UPPERCASE + thin gray rule
@@ -486,7 +506,8 @@ export function Template3({ data, options, activeSection, onSectionClick }: Prop
   return (
     <div
       id="resume-template3"
-      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.4 }}
+      data-resume-layout={pageLayout?.mode}
+      style={{ fontFamily: font, fontSize: fs, color: '#111827', backgroundColor: '#ffffff', lineHeight: 1.4, ...pageStyle }}
     >
       {/* ── Header: centered with accent title ───────────────────────── */}
       <div

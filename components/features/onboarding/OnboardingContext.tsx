@@ -1,10 +1,8 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import type { Session } from 'next-auth';
 
 interface OnboardingContextValue {
-  session: Session | null;
   selectedMoreIds: string[];
   toggleMoreSection: (id: string) => void;
   showPhoto: boolean;
@@ -12,7 +10,6 @@ interface OnboardingContextValue {
 }
 
 const OnboardingContext = createContext<OnboardingContextValue>({
-  session: null,
   selectedMoreIds: [],
   toggleMoreSection: () => {},
   showPhoto: true,

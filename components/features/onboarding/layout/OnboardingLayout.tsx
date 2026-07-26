@@ -31,10 +31,7 @@ import type { StepConfig } from '../types';
 import { Navbar } from '@/components/features/home/Navbar';
 import { computeATSScore } from '@/lib/resume-builder';
 
-const AuthModal = dynamic(
-  () => import('@/components/features/auth/AuthModal').then((m) => ({ default: m.AuthModal })),
-  { loading: () => null }
-);
+
 
 function ResumePreviewSkeleton() {
   return (
@@ -369,8 +366,29 @@ export function OnboardingLayout({
   const [activeTab, setActiveTab] = useState<BuilderTab>('edit');
   const [cmdOpen, setCmdOpen]     = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
-  const [importCardVisible, setImportCardVisible] = useState(true);
+  const [importCardVisible, setImportCardVisible] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Check if import card popup was already dismissed today
+  useEffect(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const dismissedDate = localStorage.getItem('fr-import-card-dismissed-date');
+      if (dismissedDate !== today) {
+        setImportCardVisible(true);
+      }
+    } catch {
+      setImportCardVisible(true);
+    }
+  }, []);
+
+  const handleDismissImportCard = React.useCallback(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem('fr-import-card-dismissed-date', today);
+    } catch {}
+    setImportCardVisible(false);
+  }, []);
 
   // Keyboard detection for mobile
   useEffect(() => {
@@ -452,15 +470,12 @@ export function OnboardingLayout({
       canRedo={canRedo}
       onUndo={undo}
       onRedo={redo}
-      onRequireAuth={() => setIsAuthModalOpen(true)}
     />
   );
 
   return (
     <section className="flex h-screen flex-col overflow-hidden bg-slate-50">
-      <Navbar onLoginClick={() => setIsAuthModalOpen(true)} authButtonText="Login / Sign up" />
-
-      <div className="flex flex-1 overflow-hidden pt-[56px]">
+      <div className="flex flex-1 overflow-hidden pt-0">
         {!isMounted ? (
           <div className="flex w-full h-full items-center justify-center bg-slate-50">
             <div className="flex flex-col items-center gap-3">
@@ -593,21 +608,14 @@ export function OnboardingLayout({
               </div>
               <div className="flex items-center justify-between px-4 pb-4 pt-2">
                 <button onClick={handleReset} className="cursor-pointer text-xs text-slate-400 underline underline-offset-2 transition hover:text-slate-600">Reset</button>
-                {isLastStep ? (
-                  <button
-                    onClick={handleComplete}
-                    disabled={isLoading}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {isLoading ? 'Saving...' : 'Complete'} {!isLoading && <FiCheckCircle className="text-sm" />}
-                  </button>
-                ) : (
+                {!isLastStep && (
                   <button
                     onClick={handleContinue}
                     disabled={isLoading || isSyncing}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                    className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
                   >
-                    Continue <FiArrowRight className="text-xs" />
+                    <span>Continue</span>
+                    <FiArrowRight className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
                   </button>
                 )}
               </div>
@@ -659,7 +667,7 @@ export function OnboardingLayout({
 
               {/* Desktop sidebar */}
               <aside className="hidden lg:flex w-[20%] min-w-[260px] max-w-[300px] flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-                <div className="flex h-11 flex-shrink-0 items-center border-b border-slate-200 px-5">
+                <div className="flex h-14 flex-shrink-0 items-center border-b border-slate-200 px-5">
                   <SidebarBreadcrumb />
                 </div>
                 <div ref={sidebarNavRef} className="flex-1 overflow-y-auto px-4 py-5">
@@ -798,10 +806,8 @@ export function OnboardingLayout({
 
                     {/* Scrollable form content */}
                     <div className={`flex-1 overflow-y-auto transition-all duration-300 ${isKeyboardVisible ? 'pb-20' : 'pb-[8.5rem]'} md:pb-0`}>
-                      {activeStep === 'personal' && importCardVisible && (
-                        <div className="px-5 pt-6 sm:px-8 md:px-10">
-                          <ResumeImportCard onDismiss={() => setImportCardVisible(false)} />
-                        </div>
+                      {importCardVisible && (
+                        <ResumeImportCard onDismiss={handleDismissImportCard} />
                       )}
                       <div className="px-5 pb-8 pt-6 sm:px-8 md:px-10 md:pb-10 md:pt-8">
                         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-indigo-600">
@@ -838,21 +844,14 @@ export function OnboardingLayout({
                             <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">⌃K</kbd>
                           </button>
                         </div>
-                        {isLastStep ? (
-                          <button
-                            onClick={handleComplete}
-                            disabled={isLoading}
-                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                          >
-                            {isLoading ? 'Saving...' : 'Complete Setup'} {!isLoading && <FiCheckCircle className="text-sm" />}
-                          </button>
-                        ) : (
+                        {!isLastStep && (
                           <button
                             onClick={handleContinue}
                             disabled={isLoading || isSyncing}
-                            className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-7 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
                           >
-                            Continue <FiArrowRight className="text-xs" />
+                            <span>Continue</span>
+                            <FiArrowRight className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
                           </button>
                         )}
                       </div>
@@ -936,10 +935,7 @@ export function OnboardingLayout({
         />
       )}
 
-      {/* Auth modal */}
-      {isAuthModalOpen && (
-        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-      )}
+
 
       {/* Command palette */}
       <CommandPalette

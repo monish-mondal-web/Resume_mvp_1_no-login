@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -28,7 +27,6 @@ function serializeSkills(skills: SkillGroupEntry[]): string[] {
 function migrateSkills(raw: unknown): SkillGroupEntry[] {
   if (!Array.isArray(raw) || raw.length === 0) return [];
   if (typeof raw[0] === 'string') {
-    // Old format: string[] like ["HTML", "React"] or ["Frontend: HTML, CSS"]
     return (raw as string[]).map((s, i) => {
       const colon = s.indexOf(': ');
       if (colon > 0) {
@@ -37,7 +35,6 @@ function migrateSkills(raw: unknown): SkillGroupEntry[] {
       return { id: String(i + 1), category: '', items: [s] };
     });
   }
-  // Already SkillGroupEntry[] — ensure items is always string[]
   return (raw as SkillGroupEntry[]).map(s => ({
     ...s,
     items: Array.isArray(s.items) ? s.items : typeof s.items === 'string' ? (s.items as string).split(',').map((x: string) => x.trim()).filter(Boolean) : [],
@@ -55,7 +52,7 @@ import {
 } from './defaults';
 
 export const STORAGE_KEY = 'fresh-resume-onboarding-draft';
-const STORAGE_VERSION = 2; // bump when data shape changes to clear stale cache
+const STORAGE_VERSION = 2;
 
 function safeLocalGet<T>(key: string, def: T): T {
   if (typeof window === 'undefined') return def;
@@ -69,32 +66,27 @@ function safeLocalGet<T>(key: string, def: T): T {
   }
 }
 
-function buildDefaultPersonalInfo(session: any) {
-  const fname = session?.user?.name?.split(' ')[0] || 'Rahul';
-  const lname = session?.user?.name?.split(' ').slice(1).join(' ') || 'Sharma';
-  const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
-  const slug = [fname, lname].filter(Boolean).map((s: string) => s.toLowerCase().replace(/\s+/g, '-')).join('-');
+function buildDefaultPersonalInfo() {
   return {
-    firstName: fname,
-    lastName: lname,
+    firstName: 'Rahul',
+    lastName: 'Sharma',
     professionalTitle: 'Software Engineer',
-    email: session?.user?.email ?? 'rahul.sharma@example.com',
+    email: 'rahul.sharma@example.com',
     phone: '+91 98765 43210',
     location: 'Bengaluru, Karnataka',
-    summary: 'Creative and detail-oriented Software Engineer with a passion for building beautiful, user-centric applications. Experienced in modern web technologies and agile methodologies.',
+    summary: 'Creative and detail-oriented Software Engineer with a passion for building beautiful, user-centric applications.',
     website: '',
     linkedIn: '',
     links: [
-      { type: 'website', url: `https://${username}.dev` },
-      { type: 'linkedin', url: `https://www.linkedin.com/in/${slug}` },
-      { type: 'github', url: `https://github.com/${username}` },
+      { type: 'website', url: 'https://rahulsharma.dev' },
+      { type: 'linkedin', url: 'https://www.linkedin.com/in/rahul-sharma' },
+      { type: 'github', url: 'https://github.com/rahulsharma' },
     ],
-    image: session?.user?.image ? { url: session.user.image, publicId: '' } : null,
+    image: null,
   };
 }
 
 export function useOnboarding() {
-  const { data: session, update } = useSession();
   const router = useRouter();
 
   // ── Hydration guard ──
@@ -163,7 +155,7 @@ export function useOnboarding() {
             throw new Error('stale');
           }
           return {
-            personalInfo: p.personalInfo || buildDefaultPersonalInfo(session),
+            personalInfo: p.personalInfo || buildDefaultPersonalInfo(),
             experience: p.experience || DEF_EXP,
             education: p.education || DEF_EDU,
             skills: p.skills ? migrateSkills(p.skills) : DEF_SKILLS,
@@ -189,7 +181,7 @@ export function useOnboarding() {
         } catch {}
       }
       return {
-        personalInfo: buildDefaultPersonalInfo(session),
+        personalInfo: buildDefaultPersonalInfo(),
         experience: DEF_EXP,
         education: DEF_EDU,
         skills: DEF_SKILLS,
@@ -215,68 +207,7 @@ export function useOnboarding() {
     },
   });
 
-  // ── Session sync (once, only overwrite placeholder defaults) ──
-  // isFormLoading is true while async defaultValues are still resolving — guard against it
-  // so we never call getValues('personalInfo') before the form is populated.
-  const isFormLoading = methods.formState.isLoading;
-  const { dirtyFields } = methods.formState;
 
-  useEffect(() => {
-    if (!session?.user || sessionAppliedRef.current || isFormLoading) return;
-    const prev = methods.getValues('personalInfo');
-    if (!prev) return;
-    
-    sessionAppliedRef.current = true;
-    const fname = session.user.name?.split(' ')[0] || '';
-    const lname = session.user.name?.split(' ').slice(1).join(' ') || '';
-    const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
-    const slug = [fname, lname].filter(Boolean).map((s: string) => s.toLowerCase().replace(/\s+/g, '-')).join('-');
-
-    // Only overwrite if the field is NOT dirty (not touched by user) AND it's currently empty (or default)
-    const isFirstNameEmpty = !prev.firstName || prev.firstName === 'Rahul';
-    const isLastNameEmpty  = !prev.lastName  || prev.lastName === 'Sharma';
-    const isEmailEmpty     = !prev.email     || prev.email === 'rahul.sharma@example.com';
-
-    methods.setValue('personalInfo', {
-      ...prev,
-      firstName: (!dirtyFields.personalInfo?.firstName && isFirstNameEmpty) ? fname : prev.firstName,
-      lastName:  (!dirtyFields.personalInfo?.lastName  && isLastNameEmpty)  ? lname : prev.lastName,
-      email:     (!dirtyFields.personalInfo?.email     && isEmailEmpty)     ? (session.user.email ?? prev.email) : prev.email,
-      links: (prev.links?.length || dirtyFields.personalInfo?.links) ? prev.links : [
-        { type: 'website', url: `https://${username}.dev` },
-        { type: 'linkedin', url: `https://www.linkedin.com/in/${slug}` },
-        { type: 'github', url: `https://github.com/${username}` },
-      ],
-      image: prev.image === null && session.user.image
-        ? { url: session.user.image, publicId: '' }
-        : prev.image,
-    });
-  }, [session, methods, isFormLoading, dirtyFields]);
-
-  // ── Auto-sync local base64 image to Cloudinary after login ──
-  const syncingRef = useRef(false);
-  useEffect(() => {
-    const img = methods.getValues('personalInfo.image');
-    if (session && img?.url && !img.publicId && img.url.startsWith('data:') && !syncingRef.current) {
-      syncingRef.current = true;
-      (async () => {
-        try {
-          const res = await fetch(img.url);
-          const blob = await res.blob();
-          const fd = new FormData();
-          fd.append('file', blob);
-          const upRes = await fetch('/api/upload/image', { method: 'POST', body: fd });
-          const data = await upRes.json();
-          if (data.url) {
-            methods.setValue('personalInfo.image', { url: data.url, publicId: data.publicId });
-          }
-        } catch (err) {
-          console.error('Failed to sync local image:', err);
-          syncingRef.current = false;
-        }
-      })();
-    }
-  }, [session, methods]);
 
   // ── Debounced localStorage persistence (700ms) ──
   const lsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -604,81 +535,18 @@ export function useOnboarding() {
 
   // ── Complete (submit) ──
   const handleComplete = useCallback(async () => {
-    if (isLoading || isSyncing) return;
-    if (!session) { setIsAuthModalOpen(true); return; }
+    if (isLoading) return;
     setIsLoading(true);
     try {
-      const values = methods.getValues();
-      const payload = {
-        personalInfo: values.personalInfo,
-        onboardingData: {
-          experience: values.experience,
-          education: values.education,
-          skills: serializeSkills(values.skills ?? []),
-          projects: values.projects,
-          certificates: values.certificates,
-          coursework: values.coursework,
-          involvement: values.involvement,
-          awards: values.awards,
-          publications: values.publications,
-          references: values.references,
-          achievements: values.achievements,
-          languages: values.languages,
-          softskills: values.softskills,
-          internships: values.internships,
-          freelance: values.freelance,
-          leadership: values.leadership,
-          volunteering: values.volunteering,
-          hobbies: values.hobbies,
-          conferences: values.conferences,
-          patents: values.patents,
-          extracurricular: values.extracurricular,
-        },
-      };
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-      const res = await fetch('/api/user/complete-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        setIsSyncing(true);
-        toast.success('Profile saved! Finalizing session...');
-        
-        try {
-          if (update) {
-            // Wait for session update to propagate
-            await update({ isProfileCompleted: true });
-          }
-          // Only clear storage after successful save + sync
-          localStorage.removeItem(STORAGE_KEY);
-          router.push('/dashboard');
-        } catch (syncError) {
-          console.error('Session sync failed:', syncError);
-          // Fallback redirect even if sync fails (API was successful)
-          router.push('/dashboard');
-        } finally {
-          setIsSyncing(false);
-        }
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        toast.error(errorData.message || 'Failed to save profile');
-      }
+      toast.success('Resume draft saved!');
+      setShowPreview(true);
     } catch (err: any) {
       console.error('Save error:', err);
-      if (err.name === 'AbortError') {
-        toast.error('Request timed out. Please check your internet and try again.');
-      } else {
-        toast.error('Network error or server failure. Please try again.');
-      }
+      toast.error('Failed to save resume draft.');
     } finally {
       setIsLoading(false);
     }
-  }, [session, update, methods, router]);
+  }, [isLoading]);
 
   // ── Reset ──
   const handleReset = useCallback(() => {
@@ -688,32 +556,8 @@ export function useOnboarding() {
       message: 'Are you sure you want to reset everything? All your progress and entered info will be lost permanently.',
       confirmLabel: 'Yes, reset everything',
       onConfirm: () => {
-        const img = methods.getValues('personalInfo.image');
-        if (img?.publicId) {
-          fetch(`/api/upload/image/delete?publicId=${encodeURIComponent(img.publicId)}`, { method: 'DELETE' })
-            .catch(err => console.error('Reset cleanup failed:', err));
-        }
-        const fname = session?.user?.name?.split(' ')[0] || 'Rahul';
-        const lname = session?.user?.name?.split(' ').slice(1).join(' ') || 'Sharma';
-        const username = `${fname}${lname}`.toLowerCase().replace(/\s+/g, '');
-        const slug = [fname, lname].filter(Boolean).map((s: string) => s.toLowerCase().replace(/\s+/g, '-')).join('-');
-
         methods.reset({
-          personalInfo: {
-            firstName: fname, lastName: lname,
-            professionalTitle: 'Software Engineer',
-            email: session?.user?.email ?? 'rahul.sharma@example.com',
-            phone: '+91 98765 43210',
-            location: 'Bengaluru, Karnataka',
-            summary: 'Creative and detail-oriented Software Engineer with a passion for building beautiful, user-centric applications. Experienced in modern web technologies and agile methodologies.',
-            website: '', linkedIn: '',
-            links: [
-              { type: 'website', url: `https://${username}.dev` },
-              { type: 'linkedin', url: `https://www.linkedin.com/in/${slug}` },
-              { type: 'github', url: `https://github.com/${username}` },
-            ],
-            image: session?.user?.image ? { url: session.user.image, publicId: '' } : null,
-          },
+          personalInfo: buildDefaultPersonalInfo(),
           experience:    DEF_EXP,    education:  DEF_EDU,    skills:     DEF_SKILLS,
           projects:      DEF_PROJ,   certificates: DEF_CERT, coursework: DEF_COURSE,
           involvement:   DEF_INV,    awards:     DEF_AWD,    publications: DEF_PUB,
@@ -732,11 +576,10 @@ export function useOnboarding() {
         setVisitedSteps(new Set(['personal']));
         setActiveStep('personal');
         setConfirmModal(null);
-        sessionAppliedRef.current = false;
         toast.success('Onboarding reset');
       },
     });
-  }, [session, methods]);
+  }, [methods]);
 
   const onTogglePhoto = useCallback(() => {
     const next = { ...templateOptions, showPhoto: !templateOptions.showPhoto };

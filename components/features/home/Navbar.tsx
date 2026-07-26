@@ -1,60 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { FaCrown } from 'react-icons/fa';
-import { FiArrowRight, FiChevronDown, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
-import { AccountMenu, AccountMenuItems } from './AccountMenu';
+import { FiArrowRight, FiMenu, FiX } from 'react-icons/fi';
 import { BrandLogo } from './BrandLogo';
 import { navLinks } from './home.constants';
-import { usePricingModal } from '@/hooks/usePricingModal';
-import { FREE_QUOTAS } from '@/lib/quota-config';
 
-interface NavbarProps {
-  onLoginClick?: () => void;
-  authButtonText?: string;
-}
-
-export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
-  const { data: session, status } = useSession();
+export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobileAccountOpen, setIsMobileAccountOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const userInitial =
-    session?.user?.name?.[0] || session?.user?.email?.[0] || 'U';
-  const userSecondaryText = session?.user?.email || 'Resume Builder';
-  const { openModal: openPricingModal } = usePricingModal();
-
-  const handlePrimaryAction = () => {
-    if (session) {
-      setIsDropdownOpen((isOpen) => !isOpen);
-      return;
-    }
-
-    onLoginClick?.();
-  };
-
-  const handleCloseMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-    setIsMobileAccountOpen(false);
-  };
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   return (
     <>
@@ -63,74 +16,42 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
           <BrandLogo />
         </Link>
 
-        <div className="hidden items-center gap-5 md:flex">
+        {/* Center links: Home & Templates */}
+        <div className="hidden items-center gap-6 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-slate-600 transition-colors duration-150 hover:text-indigo-600"
+              className="text-sm font-medium text-slate-600 transition-colors duration-150 hover:text-indigo-600"
             >
               {link.label}
             </a>
           ))}
         </div>
 
-        <div className="relative hidden md:block" ref={dropdownRef}>
-          {status === 'loading' ? (
-            <div className="h-8 w-32 animate-pulse rounded-full bg-slate-100" />
-          ) : (
-            <button
-              type="button"
-              onClick={handlePrimaryAction}
-              aria-haspopup={session ? 'menu' : undefined}
-              aria-expanded={session ? isDropdownOpen : undefined}
-              className={`group flex items-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 ${
-                session
-                  ? 'rounded-full border border-slate-200 bg-white pl-1 pr-3 py-1 hover:border-slate-300 hover:bg-slate-50'
-                  : 'rounded-full bg-indigo-600 px-4 py-1.5 font-medium text-white hover:bg-indigo-700'
-              }`}
-            >
-              {session ? (
-                <>
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white shadow-sm ring-2 ring-white transition-transform group-hover:scale-105">
-                    {userInitial}
-                  </div>
-                  <span className="text-sm font-semibold tracking-tight text-slate-700">
-                    {session.user?.name || 'User'}
-                  </span>
-                  <FiChevronDown className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-indigo-600' : 'group-hover:text-slate-600'}`} />
-                </>
-              ) : (
-                <span className="flex items-center gap-1.5 text-sm">
-                  {authButtonText || 'Build Resume Free'}
-                  <FiArrowRight className="text-xs" />
-                </span>
-              )}
-            </button>
-          )}
-
-          {session && isDropdownOpen && (
-            <AccountMenu
-              userInitial={userInitial}
-              userName={session.user?.name || 'User'}
-              onClose={() => setIsDropdownOpen(false)}
-            />
-          )}
+        {/* Right CTA: Build Resume Free */}
+        <div className="hidden md:block">
+          <Link
+            href="/resume/builder"
+            className="group flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white transition-all hover:bg-indigo-700 hover:shadow-md active:scale-95"
+          >
+            <span>Build Resume Free</span>
+            <FiArrowRight className="text-xs transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
         </div>
 
+        {/* Mobile menu toggle */}
         <button
           type="button"
           aria-label="Open menu"
-          onClick={() => {
-            setIsMobileMenuOpen(true);
-            setIsMobileAccountOpen(false);
-          }}
-          className="cursor-pointer transition active:scale-90 md:hidden"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="cursor-pointer text-slate-700 transition active:scale-90 md:hidden"
         >
           <FiMenu className="h-6 w-6" />
         </button>
       </nav>
 
+      {/* Mobile Drawer Menu */}
       <div
         className={`fixed inset-0 z-[100] transition-opacity duration-300 md:hidden ${
           isMobileMenuOpen ? 'pointer-events-auto' : 'pointer-events-none'
@@ -139,22 +60,22 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
         <button
           type="button"
           aria-label="Close menu overlay"
-          onClick={handleCloseMobileMenu}
-          className={`absolute inset-0 bg-slate-950/32 transition-opacity duration-300 ${
+          onClick={() => setIsMobileMenuOpen(false)}
+          className={`absolute inset-0 bg-slate-950/30 transition-opacity duration-300 ${
             isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
           }`}
         />
 
         <aside
-          className={`absolute inset-y-0 left-0 flex w-[88vw] max-w-[22rem] flex-col border-r border-slate-200 bg-white text-slate-800 shadow-[0_24px_80px_rgba(15,23,42,0.18)] transition-transform duration-300 ${
+          className={`absolute inset-y-0 left-0 flex w-[85vw] max-w-[20rem] flex-col border-r border-slate-200 bg-white text-slate-800 shadow-2xl transition-transform duration-300 ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <Link
               href="/"
               aria-label="FreshResume home"
-              onClick={handleCloseMobileMenu}
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <BrandLogo />
             </Link>
@@ -162,160 +83,39 @@ export function Navbar({ onLoginClick, authButtonText }: NavbarProps) {
             <button
               type="button"
               aria-label="Close menu"
-              onClick={handleCloseMobileMenu}
-              className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
             >
               <FiX className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto px-4 py-5">
-              <div className="mb-6">
-                <p className="px-2 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">
-                  Navigation
-                </p>
-
-                <div className="mt-3 space-y-1.5">
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.label}
-                      href={link.href}
-                      onClick={handleCloseMobileMenu}
-                      className="flex items-center justify-between rounded-xl px-3 py-3 text-[15px] font-medium text-slate-700 transition hover:bg-slate-50"
-                    >
-                      <span>{link.label}</span>
-                      <FiChevronRight className="h-4 w-4 text-slate-400" />
-                    </a>
-                  ))}
-                </div>
-              </div>
+          <div className="flex min-h-0 flex-1 flex-col justify-between p-5">
+            <div className="space-y-3">
+              <p className="px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                Menu
+              </p>
+              {navLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600"
+                >
+                  <span>{link.label}</span>
+                </a>
+              ))}
             </div>
 
-            <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-5 shadow-[0_-10px_24px_rgba(15,23,42,0.04)]">
-              {!session ? (
-                <div>
-                  <p className="px-2 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">
-                    Account
-                  </p>
-
-                  <div className="mt-4 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleCloseMobileMenu();
-                        onLoginClick?.();
-                      }}
-                      className="flex w-full cursor-pointer items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700"
-                    >
-                      {authButtonText || 'Build Resume Free'}
-                    </button>
-
-                    <p className="px-2 text-sm leading-6 text-slate-500">
-                      Sign in to create resumes, manage your account, and unlock
-                      premium features.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="mb-4 flex items-center justify-between px-2">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">
-                      My Account
-                    </p>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
-                      Free Plan
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => { handleCloseMobileMenu(); openPricingModal(); }}
-                      className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98]"
-                    >
-                      <span className="flex items-center gap-2">
-                        <FaCrown className="text-sm text-indigo-100" />
-                        Upgrade to Pro
-                      </span>
-                      <FiChevronRight className="h-4 w-4 text-indigo-100" />
-                    </button>
-
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIsMobileAccountOpen((isOpen) => !isOpen)
-                        }
-                        aria-expanded={isMobileAccountOpen}
-                        className="flex w-full cursor-pointer items-center gap-3 px-4 py-4 text-left"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-base font-semibold uppercase text-indigo-600">
-                          {userInitial}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-900">
-                            {session.user?.name || 'User'}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">
-                            {userSecondaryText}
-                          </p>
-                        </div>
-                        <FiChevronDown
-                          className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
-                            isMobileAccountOpen ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-
-                      <div
-                        className={`grid transition-[grid-template-rows] duration-300 ${
-                          isMobileAccountOpen
-                            ? 'grid-rows-[1fr]'
-                            : 'grid-rows-[0fr]'
-                        }`}
-                      >
-                        <div className="overflow-hidden border-t border-slate-200 bg-white">
-                          <div className="px-4 py-3">
-                            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Credits · Free Plan</p>
-                            <div className="space-y-2">
-                              {FREE_QUOTAS.map((q) => {
-                                const isUnlimited = q.limit === null;
-                                const pct = isUnlimited ? 100 : q.limit! > 0 ? Math.round((q.used / q.limit!) * 100) : 0;
-                                const exhausted = !isUnlimited && q.used >= (q.limit ?? 0);
-                                return (
-                                  <div key={q.id}>
-                                    <div className="flex items-center justify-between mb-0.5">
-                                      <span className="text-[11px] text-slate-600">{q.label}</span>
-                                      <span className={`text-[10px] font-semibold tabular-nums ${exhausted ? 'text-red-400' : isUnlimited ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                        {isUnlimited ? '∞' : `${q.used}/${q.limit}`}
-                                      </span>
-                                    </div>
-                                    <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100">
-                                      <div
-                                        className={`h-full rounded-full ${exhausted ? 'bg-red-400' : isUnlimited ? 'bg-emerald-400' : 'bg-indigo-500'}`}
-                                        style={{ width: `${pct}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="border-t border-slate-100">
-                            <AccountMenuItems
-                              onClose={() => {
-                                setIsDropdownOpen(false);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="pt-4 border-t border-slate-100">
+              <Link
+                href="/resume/builder"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                <span>Build Resume Free</span>
+                <FiArrowRight className="text-xs" />
+              </Link>
             </div>
           </div>
         </aside>

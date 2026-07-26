@@ -36,7 +36,7 @@ export function PatentsForm() {
       )}
       <AddButton
         label={fields.length === 0 ? 'Add patent' : 'Add another patent'}
-        onClick={() => append({ id: Date.now().toString(), title: '', number: '', date: '', url: '', description: '', isHidden: false })}
+        onClick={() => append({ id: Date.now().toString(), title: '', number: '', issuer: '', date: '', url: '', description: '', isHidden: false })}
       />
     </div>
   );

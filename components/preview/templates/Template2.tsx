@@ -1,16 +1,16 @@
-'use client';
-
 /* eslint-disable react-hooks/static-components */
 
 import React from 'react';
 import type { ResumeData, TemplateOptions } from '@/types/resume.types';
 import { ACCENT_COLORS, FONT_FAMILY_MAP } from '@/types/resume.types';
+import type { ResumePageRenderLayout } from '@/lib/resumePageLayout';
 
 interface Props {
   data: ResumeData;
   options: TemplateOptions;
   activeSection?: string;
   onSectionClick?: (sectionId: string) => void;
+  pageLayout?: ResumePageRenderLayout;
 }
 
 const V = <T extends { isHidden?: boolean }>(arr: T[] | undefined): T[] =>
@@ -113,7 +113,7 @@ function getLinkIcon2(type: string) {
 }
 
 // Academic / LaTeX-style template — two-column header, bold section labels, em-dash bullets
-export function Template2({ data, options, activeSection, onSectionClick }: Props) {
+export function Template2({ data, options, activeSection, onSectionClick, pageLayout }: Props) {
   const {
     personal = { firstName:'', lastName:'', professionalTitle:'', email:'', phone:'', location:'', summary:'', links:[], image:null },
     experience = [], education = [], skills = [], sectionOrder = [], enabledSections = [],
@@ -130,9 +130,29 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
   const showIcons  = options.showContactIcons !== false;
   const imgPx      = options.imageSize === 'sm' ? 44 : options.imageSize === 'lg' ? 70 : 56;
   const imgRadius  = options.imageShape === 'square' ? 4 : options.imageShape === 'rounded' ? 8 : '50%';
+  const pageStyle: React.CSSProperties = pageLayout?.mode === 'columns'
+    ? {
+        width: pageLayout.contentWidth,
+        height: pageLayout.contentHeight,
+        minHeight: pageLayout.contentHeight,
+        padding: 0,
+        columnWidth: pageLayout.contentWidth,
+        columnGap: 0,
+        columnFill: 'auto',
+      }
+    : pageLayout?.mode === 'print'
+      ? { width: '100%', minHeight: 0, padding: 0 }
+      : { minHeight: '100%', padding: pad };
 
   const ring = (id: string): React.CSSProperties =>
-    activeSection === id ? { outline: `2px solid ${accent}`, outlineOffset: 2, borderRadius: 3 } : {};
+    activeSection === id
+      ? {
+          boxShadow: `inset 0 0 0 2px ${accent}`,
+          borderRadius: 3,
+          boxDecorationBreak: 'clone',
+          WebkitBoxDecorationBreak: 'clone',
+        }
+      : {};
   const click = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); onSectionClick?.(id); };
 
   // Section header: ALL-CAPS label + full-width rule below
@@ -542,7 +562,8 @@ export function Template2({ data, options, activeSection, onSectionClick }: Prop
   return (
     <div
       id="resume-template2"
-      style={{ fontFamily: font, fontSize: fs, color: '#1a1a1a', backgroundColor: '#ffffff', padding: pad, minHeight: '100%', lineHeight: 1.45 }}
+      data-resume-layout={pageLayout?.mode}
+      style={{ fontFamily: font, fontSize: fs, color: '#1a1a1a', backgroundColor: '#ffffff', lineHeight: 1.45, ...pageStyle }}
     >
       {/* ── Header: two-column ──────────────────────────────────────────── */}
       <div

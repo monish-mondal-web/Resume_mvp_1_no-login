@@ -4,8 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
-import { useSession } from 'next-auth/react';
-import type { Session } from 'next-auth';
 import { FiX, FiUpload, FiPlus, FiArrowRight } from 'react-icons/fi';
 import { FaLinkedin, FaGithub, FaXTwitter, FaDiscord, FaFigma, FaDribbble, FaBehance, FaSketch } from 'react-icons/fa6';
 import { FiGlobe, FiExternalLink } from 'react-icons/fi';
@@ -28,11 +26,8 @@ const SOCIAL_PLATFORMS = [
   { id: 'custom',   label: 'Custom',       icon: <FiExternalLink />, placeholder: 'https://example.com' },
 ];
 
-
-
-function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
+function ImageUploadModal({ onUploaded, onClose }: {
   currentPublicId?: string;
-  session: Session | null;
   onUploaded: (url: string, publicId: string) => void;
   onClose: () => void;
 }) {
@@ -78,34 +73,11 @@ function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
     setProgress(0);
     setError('');
 
-    if (!session) {
-      const reader = new FileReader();
-      reader.onprogress = (e) => { if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100)); };
-      reader.onload = () => { setUploading(false); onUploaded(reader.result as string, ''); };
-      reader.onerror = () => { setError('Failed to read file locally.'); setUploading(false); };
-      reader.readAsDataURL(staged.file);
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append('file', staged.file);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload/image');
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100)); };
-    xhr.onload = async () => {
-      setUploading(false);
-      const resp = JSON.parse(xhr.responseText);
-      if (xhr.status === 200 && resp.url) {
-        onUploaded(resp.url, resp.publicId);
-        if (currentPublicId) {
-          fetch(`/api/upload/image/delete?publicId=${encodeURIComponent(currentPublicId)}`, { method: 'DELETE' }).catch(console.error);
-        }
-      } else {
-        setError(resp.message ?? 'Upload failed');
-      }
-    };
-    xhr.onerror = () => { setUploading(false); setError('Network error occurred.'); };
-    xhr.send(fd);
+    const reader = new FileReader();
+    reader.onprogress = (e) => { if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100)); };
+    reader.onload = () => { setUploading(false); onUploaded(reader.result as string, ''); };
+    reader.onerror = () => { setError('Failed to read file locally.'); setUploading(false); };
+    reader.readAsDataURL(staged.file);
   };
 
   if (typeof document === 'undefined') return null;
@@ -188,11 +160,8 @@ function ImageUploadModal({ currentPublicId, session, onUploaded, onClose }: {
   );
 }
 
-
-
 export function PersonalForm() {
   const { register, setValue, control } = useFormContext<OnboardingFormValues>();
-  const { data: session } = useSession();
   const { showPhoto, onTogglePhoto } = useOnboardingContext();
 
   // Watch only the fields actually used for conditional rendering — avoids full-form re-renders on every keystroke
@@ -216,14 +185,8 @@ export function PersonalForm() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
 
-  const handleDeleteImage = async () => {
-    if (!image) return;
-    const prevImage = image;
+  const handleDeleteImage = () => {
     setValue('personalInfo.image', null);
-    if (prevImage.publicId) {
-      try { await fetch(`/api/upload/image/delete?publicId=${encodeURIComponent(prevImage.publicId)}`, { method: 'DELETE' }); }
-      catch (err) { console.error('Failed to delete image:', err); }
-    }
   };
 
   const userInitial = firstName?.[0]?.toUpperCase() ?? 'A';
@@ -356,7 +319,6 @@ export function PersonalForm() {
       {modalOpen && (
         <ImageUploadModal
           currentPublicId={image?.publicId}
-          session={session}
           onUploaded={(url, publicId) => { setImgLoading(true); setValue('personalInfo.image', { url, publicId }); setModalOpen(false); }}
           onClose={() => setModalOpen(false)}
         />

@@ -38,7 +38,7 @@ export function LeadershipForm() {
       )}
       <AddButton
         label={fields.length === 0 ? 'Add leadership position' : 'Add another position'}
-        onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', description: '', isHidden: false })}
+        onClick={() => append({ id: Date.now().toString(), role: '', organization: '', start: '', end: '', current: false, description: '', isHidden: false })}
       />
     </div>
   );

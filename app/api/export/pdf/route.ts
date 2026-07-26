@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { rateLimit, getIP, createRateLimitResponse } from '@/lib/security/limiter';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
 
@@ -11,7 +9,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 // ── Request schema ────────────────────────────────────────────────────────────
-// Zod v4 breaking change: z.record() now requires (keySchema, valueSchema)
 const OptionsSchema = z.object({
   accentColor:       z.enum(['indigo','violet','blue','sky','teal','emerald','rose','orange','amber','slate']),
   fontSize:          z.enum(['sm', 'md', 'lg']),
@@ -30,31 +27,26 @@ const OptionsSchema = z.object({
 });
 
 const RequestSchema = z.object({
-  data:       z.record(z.string(), z.unknown()), // ResumeData — trusted, user session data
+  data:       z.record(z.string(), z.unknown()),
   templateId: z.enum(['template1', 'template2', 'template3']),
   options:    OptionsSchema,
+  pageBreaks: z.array(z.number().int().min(1).max(200)).max(100).optional(),
 });
 
 // ── POST /api/export/pdf ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // ── 1. Auth check ──────────────────────────────────────────────────────────
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized. Please log in to download PDF.' }, { status: 401 });
-  }
-
-  // ── 2. Rate Limiting ────────────────────────────────────────────────────────
+  // Rate Limiting
   const ip = getIP(req);
   const rl = rateLimit(ip, 'export:pdf', { limit: 5, windowMs: 60 * 1000 }); // 5 per min
   if (!rl.success) return createRateLimitResponse(rl.resetAt);
 
-  // ── 3. Size guard (5 MB) ────────────────────────────────────────────────────
+  // Size guard (5 MB)
   const cl = req.headers.get('content-length');
   if (cl && parseInt(cl, 10) > 5_242_880) {
     return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
   }
 
-  // ── 2. Parse + validate ─────────────────────────────────────────────────────
+  // Parse + validate
   let raw: unknown;
   try { raw = await req.json(); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
@@ -64,9 +56,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid request data', issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { data, templateId, options } = parsed.data;
+  const { data, templateId, options, pageBreaks = [] } = parsed.data;
 
-  // blob: URLs are browser-local and can't be resolved by Puppeteer — strip them
   const personal = (data as Record<string, unknown>).personal as Record<string, unknown> | undefined;
   if (personal?.image) {
     const img = personal.image as { url?: string };
@@ -75,26 +66,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── 3. Render HTML + generate PDF ───────────────────────────────────────────
+  // Render HTML + generate PDF
   try {
-    // Dynamic imports keep these heavy modules out of the edge bundle
-    const [{ renderResumeHTML }, { getBrowser }] = await Promise.all([
-      import('@/lib/pdf/renderTemplate'),
+    const [{ renderReactResumeHTML }, { getBrowser }] = await Promise.all([
+      import('@/lib/pdf/renderReactTemplate'),
       import('@/lib/pdf/browser'),
     ]);
 
-    const html = renderResumeHTML(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const html = renderReactResumeHTML(
       data as unknown as ResumeData,
       templateId as TemplateId,
       options as TemplateOptions,
+      pageBreaks,
     );
 
     const browser = await getBrowser();
     const page = await browser.newPage();
 
     try {
-      // Restrict outbound requests: allow fonts/images, block everything else
       await page.setRequestInterception(true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       page.on('request', (r: any) => {
@@ -106,16 +95,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       });
 
-      const waitUntil = (options.fontFamily === 'inter' || options.fontFamily === 'serif') ? 'networkidle0' : 'domcontentloaded';
+      const usesRemoteFont = [options.fontFamily, options.headingFont]
+        .some((font) => font === 'inter' || font === 'serif');
+      const waitUntil = usesRemoteFont ? 'networkidle0' : 'domcontentloaded';
       await page.setContent(html, { waitUntil, timeout: 20_000 });
 
-      // Wait for fonts and images to finish loading
-      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
       await page.evaluate(() =>
         Promise.all(
           Array.from(document.images)
             .filter(img => !img.complete)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map(img => new Promise<void>(res => { img.onload = img.onerror = () => res(); }))
         )
       );
@@ -123,7 +114,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const pdfBuffer = await page.pdf({
         format:              'A4',
         printBackground:     true,
-        preferCSSPageSize:   false,
+        preferCSSPageSize:   true,
         displayHeaderFooter: false,
         margin: { top: 0, right: 0, bottom: 0, left: 0 },
       });

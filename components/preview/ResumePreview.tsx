@@ -1,8 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ResumeData, TemplateId, TemplateOptions } from '@/types/resume.types';
+import {
+  A4_HEIGHT_PX,
+  A4_WIDTH_PX,
+  getResumePageMetrics,
+  type ResumePageRenderLayout,
+} from '@/lib/resumePageLayout';
 import { Template1 } from './templates/Template1';
 import { Template2 } from './templates/Template2';
 import { Template3 } from './templates/Template3';
@@ -18,8 +23,8 @@ import {
 } from 'react-icons/fi';
 
 // A4 at 96 dpi: 210mm × 297mm → 794 × 1123 px
-const A4_W     = 794;
-const A4_H     = 1123;
+const A4_W     = A4_WIDTH_PX;
+const A4_H     = A4_HEIGHT_PX;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 1.5;
 const ZOOM_STEP = 0.1;
@@ -165,14 +170,14 @@ export function ResumePreview({
   data, templateId, templateOptions, activeSection,
   onTemplateChange, onOptionsChange, onSectionClick,
   onUndo, onRedo, canUndo = false, canRedo = false,
-  onRequireAuth,
 }: Props) {
   const containerRef     = useRef<HTMLDivElement>(null);
   const exportRef        = useRef<HTMLDivElement>(null);
   const nameMeasureRef   = useRef<HTMLSpanElement>(null);
   const zoomAnchorRef    = useRef<{ mx: number, my: number, oldZoom: number, clientX: number, clientY: number } | null>(null);
   const [zoom, setZoom]  = useState(0.65);
-  const [contentH, setContentH]       = useState(A4_H);
+  const [pageCount, setPageCount]     = useState(1);
+  const pageBreaksRef = useRef<number[]>([]);
   const [nameWidth, setNameWidth]     = useState(80);
   const [activePanel, setActivePanel] = useState<'tpl' | 'stl' | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -181,8 +186,16 @@ export function ResumePreview({
   ));
   const fileNameEditedRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const { data: session } = useSession();
   const touchState = useRef<{ initialDist: number; initialZoom: number } | null>(null);
+  const pageMetrics = useMemo(
+    () => getResumePageMetrics(templateId, templateOptions),
+    [templateId, templateOptions],
+  );
+  const columnLayout = useMemo<ResumePageRenderLayout>(() => ({
+    mode: 'columns',
+    contentWidth: pageMetrics.contentWidth,
+    contentHeight: pageMetrics.contentHeight,
+  }), [pageMetrics.contentHeight, pageMetrics.contentWidth]);
 
   useEffect(() => {
     if (fileNameEditedRef.current || !data.personal?.firstName) return;
@@ -203,20 +216,81 @@ export function ResumePreview({
   
   const isAutoFit    = useRef(true); 
   const zoomPct      = Math.round(zoom * 100);
-  const pageCount    = Math.max(1, Math.ceil(contentH / A4_H));
+  const measurePages = useCallback(() => {
+    const flow = exportRef.current?.firstElementChild as HTMLElement | null;
+    if (!flow) return pageBreaksRef.current;
 
-  // Measure the hidden export container (no CSS transforms) to get the true content height.
-  // The old approach watched contentRef which had height driven by contentH — a circular no-op.
-  useEffect(() => {
-    const el = exportRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      const h = entries[0]?.contentRect?.height ?? A4_H;
-      setContentH(h);
+    const flowRect = flow.getBoundingClientRect();
+    const nextBreaks: number[] = [];
+    let highestPage = 0;
+    const getPageAtLeft = (left: number) => Math.max(
+      0,
+      Math.floor((left - flowRect.left + 0.01) / pageMetrics.contentWidth),
+    );
+
+    Array.from(flow.querySelectorAll('*')).forEach((element) => {
+      Array.from(element.getClientRects()).forEach((rect) => {
+        if (rect.width <= 0 || rect.height <= 0) return;
+        const fragmentPage = getPageAtLeft(rect.left);
+        highestPage = Math.max(highestPage, fragmentPage);
+      });
     });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+
+    let highestBlockPage = 0;
+    Array.from(flow.children).forEach((child, childIndex) => {
+      const rects = Array.from(child.getClientRects())
+        .filter((rect) => rect.width > 0 && rect.height > 0);
+      if (!rects.length) return;
+
+      const firstRect = rects.reduce((earliest, rect) => (
+        rect.left < earliest.left
+        || (rect.left === earliest.left && rect.top < earliest.top)
+          ? rect
+          : earliest
+      ));
+      const childPage = getPageAtLeft(firstRect.left);
+      const startsAtColumnTop = Math.abs(firstRect.top - flowRect.top) <= 2;
+
+      if (childPage > highestBlockPage && startsAtColumnTop) {
+        nextBreaks.push(childIndex);
+      }
+      highestBlockPage = Math.max(highestBlockPage, childPage);
+    });
+
+    const nextPageCount = highestPage + 1;
+    setPageCount((current) => current === nextPageCount ? current : nextPageCount);
+    pageBreaksRef.current = nextBreaks;
+    return nextBreaks;
+  }, [pageMetrics.contentWidth]);
+
+  // The hidden column flow is the source of truth for page count and PDF breaks.
+  useLayoutEffect(() => {
+    const flow = exportRef.current?.firstElementChild as HTMLElement | null;
+    if (!flow) return;
+
+    let active = true;
+    const measure = () => {
+      if (active) measurePages();
+    };
+    const frame = window.requestAnimationFrame(measure);
+    const observer = new MutationObserver(measure);
+    observer.observe(flow, {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    measure();
+    void document.fonts?.ready.then(measure);
+    document.fonts?.addEventListener('loadingdone', measure);
+
+    return () => {
+      active = false;
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      document.fonts?.removeEventListener('loadingdone', measure);
+    };
+  }, [activeSection, columnLayout, data, measurePages, templateId, templateOptions]);
 
   const doFit = useCallback((scrollToTop = false) => {
     if (!containerRef.current) return;
@@ -393,24 +467,21 @@ export function ResumePreview({
 
   const goToNextPage = () => {
     if (!containerRef.current) return;
-    const nextIdx = currentPage >= pageCount ? 0 : currentPage;
+    const visibleCurrentPage = Math.min(currentPage, pageCount);
+    const nextIdx = visibleCurrentPage >= pageCount ? 0 : visibleCurrentPage;
     const ph = (A4_H * zoom) + 28;
     containerRef.current.scrollTo({ top: nextIdx * ph, behavior: 'smooth' });
   };
 
   const handleExport = async (type: 'pdf' | 'png' | 'jpg') => {
-    if (!session) {
-      if (onRequireAuth) onRequireAuth();
-      return;
-    }
     setIsExporting(true);
     try {
-      // Always capture the hidden export container — it renders at full 794px width
-      // with no CSS transforms, giving true 288 DPI output regardless of preview zoom.
       const name = (fileName.trim() || (data.personal?.firstName ? `${data.personal.firstName}_resume` : 'resume')).toLowerCase().replace(/\s+/g, '-');
       if (type === 'pdf') {
+        await document.fonts.ready;
+        const pageBreaks = measurePages();
         const { downloadAsPDF } = await import('@/lib/exportResume');
-        await downloadAsPDF(data, templateId, templateOptions, `${name}.pdf`);
+        await downloadAsPDF(data, templateId, templateOptions, `${name}.pdf`, pageBreaks);
       }
     } catch (err) { console.error('Export failed:', err); }
     finally { setIsExporting(false); }
@@ -419,17 +490,26 @@ export function ResumePreview({
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-slate-50">
 
-      {/* ── Hidden measurement container: full 794px, no transforms, drives pageCount ── */}
+      {/* Hidden, unscaled column flow used to measure real page fragments. */}
       <div
         aria-hidden="true"
-        style={{ position: 'fixed', top: 0, left: -9999, width: A4_W, zIndex: -1, pointerEvents: 'none' }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: -9999,
+          width: pageMetrics.contentWidth,
+          height: pageMetrics.contentHeight,
+          visibility: 'hidden',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }}
       >
         <div ref={exportRef}>
           {templateId === 'template3'
-            ? <Template3 data={data} options={templateOptions} />
+            ? <Template3 data={data} options={templateOptions} pageLayout={columnLayout} />
             : templateId === 'template2'
-              ? <Template2 data={data} options={templateOptions} />
-              : <Template1 data={data} options={templateOptions} />}
+              ? <Template2 data={data} options={templateOptions} pageLayout={columnLayout} />
+              : <Template1 data={data} options={templateOptions} pageLayout={columnLayout} />}
         </div>
       </div>
 
@@ -459,7 +539,7 @@ export function ResumePreview({
 
       {/* ── Main Pane ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
-        <div className="relative z-40 flex h-11 items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur-md pr-6 px-3">
+        <div className="relative z-40 flex h-14 items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur-md pr-6 px-3">
           <div className="flex items-center">
             <div className="flex items-center group relative">
               <span ref={nameMeasureRef} className="absolute opacity-0 pointer-events-none text-[11px] font-semibold px-1">
@@ -485,16 +565,22 @@ export function ResumePreview({
             <button
               onClick={() => handleExport('pdf')}
               disabled={isExporting}
-              className="flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-[10px] font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50 shadow-sm cursor-pointer"
+              className="flex cursor-pointer items-center gap-2 rounded-sm bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
             >
-              {isExporting ? <svg width="10" height="10" viewBox="0 0 10 10" className="animate-spin"><circle cx="5" cy="5" r="3.5" stroke="white" strokeWidth="1.5" strokeDasharray="14" strokeDashoffset="4" fill="none" /></svg> : <FiDownload className="text-xs" />}
-              Download PDF
+              {isExporting ? (
+                <svg width="14" height="14" viewBox="0 0 12 12" className="animate-spin text-white">
+                  <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="2" strokeDasharray="16" strokeDashoffset="4" fill="none" />
+                </svg>
+              ) : (
+                <FiDownload className="text-sm transition-transform duration-200 group-hover:scale-110" />
+              )}
+              <span>{isExporting ? 'Exporting...' : 'Download PDF'}</span>
             </button>
           </div>
         </div>
 
         <div ref={containerRef} className="flex-1 overflow-auto bg-[#e2e5e9] no-scrollbar">
-          <div className="flex flex-col items-center py-5 pb-24 px-4 lg:px-8" style={{ minWidth: 'max-content', width: '100%' }}>
+          <div className="flex flex-col items-center pt-2.5 pb-24 px-4 lg:px-8" style={{ minWidth: 'max-content', width: '100%' }}>
             {Array.from({ length: pageCount }).map((_, pageIdx) => (
               <div key={pageIdx} className="flex flex-col items-center" style={{ width: '100%' }}>
                 {/* Page separator label above page 2+ */}
@@ -518,12 +604,41 @@ export function ResumePreview({
                     boxShadow: '0 2px 16px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07)',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: A4_W, transformOrigin: 'top left', transform: `scale(${zoom}) translateY(-${pageIdx * A4_H}px)` }}>
-                    {templateId === 'template3'
-                      ? <Template3 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />
-                      : templateId === 'template2'
-                        ? <Template2 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />
-                        : <Template1 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} />}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: A4_W,
+                      height: A4_H,
+                      transformOrigin: 'top left',
+                      transform: `scale(${zoom})`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: pageMetrics.padding.top,
+                        left: pageMetrics.padding.left,
+                        width: pageMetrics.contentWidth,
+                        height: pageMetrics.contentHeight,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: pageMetrics.contentWidth,
+                          height: pageMetrics.contentHeight,
+                          transform: `translateX(-${pageIdx * pageMetrics.contentWidth}px)`,
+                        }}
+                      >
+                        {templateId === 'template3'
+                          ? <Template3 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} pageLayout={columnLayout} />
+                          : templateId === 'template2'
+                            ? <Template2 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} pageLayout={columnLayout} />
+                            : <Template1 data={data} options={templateOptions} activeSection={activeSection} onSectionClick={onSectionClick} pageLayout={columnLayout} />}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -564,7 +679,7 @@ export function ResumePreview({
 
         <div className="absolute bottom-20 right-5 z-50 sm:bottom-6 sm:right-8">
           <button onClick={goToNextPage} className="cursor-pointer rounded-full bg-white/90 px-4 py-2 text-[10px] font-semibold text-slate-600 shadow-2xl border border-slate-200/60 backdrop-blur-xl transition-all hover:border-indigo-200 hover:text-indigo-600 hover:bg-white active:scale-95 uppercase tracking-widest">
-            Page {currentPage} of {pageCount}
+            Page {Math.min(currentPage, pageCount)} of {pageCount}
           </button>
         </div>
 

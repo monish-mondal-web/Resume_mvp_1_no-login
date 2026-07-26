@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useSession } from 'next-auth/react';
 import { FormProvider } from 'react-hook-form';
 import { useOnboarding } from './useOnboarding';
 import { OnboardingLayout } from './layout/OnboardingLayout';
@@ -9,8 +8,6 @@ import { OnboardingContextProvider } from './OnboardingContext';
 import { formRegistry } from './forms';
 
 export function RefactoredOnboardingClient() {
-  const { data: session } = useSession();
-
   const {
     methods,
     isMounted,
@@ -51,7 +48,6 @@ export function RefactoredOnboardingClient() {
     <FormProvider {...methods}>
       <OnboardingContextProvider
         value={{
-          session,
           selectedMoreIds,
           toggleMoreSection,
           showPhoto: templateOptions?.showPhoto ?? true,

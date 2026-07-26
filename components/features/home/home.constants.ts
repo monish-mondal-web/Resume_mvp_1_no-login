@@ -1,8 +1,6 @@
 export const navLinks = [
   { label: 'Home', href: '/' },
-  { label: 'Resume Builder', href: '/resume/builder' },
-  { label: 'Templates', href: '/templates' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Templates', href: '#templates' },
 ] as const;
 
 export const heroImage = {

@@ -1,6 +1,13 @@
-
 import mongoose from 'mongoose';
+import dns from 'dns';
 import { env } from '@/utils/env';
+
+// Set public DNS servers to resolve MongoDB SRV records reliably on Windows/local dev
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // Ignore if unsupported
+}
 
 const MONGODB_URI = env.MONGODB_URI;
 
@@ -32,6 +39,7 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

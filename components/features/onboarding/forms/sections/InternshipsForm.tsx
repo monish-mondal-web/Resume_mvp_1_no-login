@@ -39,7 +39,7 @@ export function InternshipsForm() {
       )}
       <AddButton
         label={fields.length === 0 ? 'Add internship' : 'Add another internship'}
-        onClick={() => append({ id: Date.now().toString(), role: '', company: '', start: '', end: '', location: '', description: '', isHidden: false })}
+        onClick={() => append({ id: Date.now().toString(), role: '', company: '', start: '', end: '', location: '', currentlyWorking: false, description: '', isHidden: false })}
       />
     </div>
   );

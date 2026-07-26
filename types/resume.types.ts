@@ -152,7 +152,7 @@ export interface ResumeFreelance {
   client: string;
   start: string;
   end: string;
-  currentlyWorking: boolean;
+  currentlyWorking?: boolean;
   description: string;
   isHidden?: boolean;
 }
@@ -188,15 +188,18 @@ export interface ResumeInterest {
 export interface ResumeConference {
   id: string;
   title: string;
-  organizer: string;
+  role?: string;
+  organizer?: string;
   date: string;
-  description: string;
+  location?: string;
+  description?: string;
   isHidden?: boolean;
 }
 
 export interface ResumePatent {
   id: string;
   title: string;
+  number?: string;
   issuer: string;
   date: string;
   url: string;
