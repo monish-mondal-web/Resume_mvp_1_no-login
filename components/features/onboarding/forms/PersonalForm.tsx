@@ -218,6 +218,7 @@ export function PersonalForm() {
   const [imgLoading, setImgLoading]       = useState(false);
   const [menuOpen, setMenuOpen]           = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [aiHeadshotComingSoon, setAiHeadshotComingSoon] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -268,15 +269,57 @@ export function PersonalForm() {
                 className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
                 <FiUpload className="text-sm" /> {image ? 'Change photo' : 'Upload photo'}
               </button>
-              <a href="/ai-headshot" target="_blank" rel="noopener noreferrer"
-                className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-violet-700">
+              <button
+                type="button"
+                onClick={() => setAiHeadshotComingSoon(true)}
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-violet-700"
+              >
                 <AiSparkleIcon /> Create AI Headshot
-              </a>
+              </button>
             </div>
             <p className="text-[11px] text-slate-400">JPG, PNG or WebP · max 5 MB</p>
           </div>
         </div>
       </div>
+
+      {aiHeadshotComingSoon && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          onClick={() => setAiHeadshotComingSoon(false)}
+        >
+          <div
+            className="relative flex w-full max-w-sm flex-col items-center rounded-2xl bg-white p-6 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setAiHeadshotComingSoon(false)}
+              className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              <FiX className="text-sm" />
+            </button>
+
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+              <FiLock className="text-xl" />
+            </div>
+
+            <span className="mb-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+              Coming Soon
+            </span>
+
+            <h3 className="text-base font-bold text-slate-800">AI Headshot Generator</h3>
+            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+              Our AI studio headshot feature is under development. Soon you will be able to generate professional studio-quality headshots automatically!
+            </p>
+
+            <button
+              onClick={() => setAiHeadshotComingSoon(false)}
+              className="mt-5 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Photo visibility toggle */}
       <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3">
