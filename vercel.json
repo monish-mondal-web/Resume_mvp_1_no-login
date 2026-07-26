@@ -4,7 +4,7 @@
   "functions": {
     "app/api/export/pdf/route": {
       "maxDuration": 60,
-      "memory": 3009
+      "memory": 2048
     }
   }
 }
