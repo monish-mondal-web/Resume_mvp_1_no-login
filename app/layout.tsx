@@ -3,6 +3,7 @@ import { Poppins, Inter, Lora } from 'next/font/google';
 import './globals.css';
 import { AppProviders } from '@/components/providers/AppProviders';
 import { Toaster } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/next';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -43,6 +44,7 @@ export default function RootLayout({
             <Toaster position="bottom-right" />
           </AppProviders>
         </div>
+        <Analytics />
       </body>
     </html>
   );
